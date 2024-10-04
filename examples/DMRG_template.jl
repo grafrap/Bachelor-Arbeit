@@ -1,0 +1,328 @@
+using ITensors
+# using ITensorParallel
+using Dates
+using Random
+using HDF5
+
+# functions #
+
+function spinstate_sNSz(s,N,Sz;random="yes")
+  #=
+       function that creates a spin state from s,N,Sz
+
+       Notes:
+       - as of now, only s=1/2 and s=1 are possible
+       - for s=1, the state created has minimal nr of "Z0"
+  =#
+    # TODO: Generalize this function for many s
+    # s=1/2
+  if s==1/2
+      if N%2 == abs(2*Sz)%2 && abs(Sz) <= s*N
+          state = ["Dn" for i in 1:N]
+          for i in 1:Int(N/2+Sz)
+              state[i] = "Up"
+          end
+          if random=="yes"
+              shuffle!(state)
+          end
+      else
+          println("ERROR: check s, N and Sz")
+          exit()
+      end
+  # s=1
+  elseif s==1
+      if (2*Sz)%2 == 0 && abs(Sz) <= s*N
+          state = ["Dn" for i in 1:N]
+          if N%2==0
+              for i in 1:Int(N/2+floor(Sz/2))
+                  state[i] = "Up"
+              end
+              if abs(Sz%2)==1
+                  state[Int(N/2+floor(Sz/2))+1] = "Z0"
+              end
+          elseif N%2==1
+              for i in 1:Int(floor(N/2)+ceil(Sz/2))
+                  state[i] = "Up"
+              end
+              if abs(Sz%2)==0
+                  state[Int(floor(N/2)+ceil(Sz/2))+1] = "Z0"
+              end
+          end
+          if random=="yes"
+              shuffle!(state)
+          end
+      else
+          println("ERROR: check s, N and Sz")
+          exit()
+      end
+  else
+      println("ERROR: as of now, only s=1/2 and s=1 are possible")
+      exit()
+  end
+
+  return(state)
+end
+
+function S2_op(Nsites, sites)
+  #=
+    S^2 operator
+
+    S^2 = SpSm + Sz^2 - Sz
+    SpSm = sum_{i,j} Sp(i)Sm(j)
+    Sz^2 = sum_{i,j} Sz(i)Sz(j)
+    Sz = sum_i Sz(i)
+  =#
+  
+  ampo = AutoMPO()
+
+  for i in 1:Nsites
+    for j in 1:Nsites
+      ampo += 1.,"S+",i,"S-",j
+      ampo += 1.,"Sz",i,"Sz",j
+    end
+    ampo += -1.,"Sz",i
+  end
+
+  S2 = MPO(ampo, sites)
+
+  return S2
+end
+
+function Szi_op(i, sites)
+  #=
+      Sz(i) operator
+  =#
+
+  ampo = AutoMPO()
+
+  ampo += 1., "Sz", i
+
+  Szi = MPO(ampo, sites)
+
+  return Szi
+end
+
+function Hamiltonian(N, J1, J2, sites)
+  #= 
+    Hamiltonian TODO: Add equations
+    # Option one: function that contains the equations
+    # Option two: visual scheme that allows to choose parameters
+    # Option three: User provides the function
+  =#
+
+  ampo = AutoMPO()
+
+  #J1
+  if J1 != 0.0
+    for i in 1:2:N-1
+      ampo += 0#TODO: depending on equations
+    end
+  end
+
+  #J2
+  if J2 != 0.0
+    for i in 2:2:N-1
+      ampo += 0#TODO: depending on equations
+    end
+  end
+
+  H = MPO(ampo, sites)
+
+  return H
+end
+
+
+# TODO: Thsi is general, right?
+function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
+  maxdimstep=100,cutoff=1E-8,ψn=nothing,w=nothing)
+  #=
+     DMRG sweeps (maxdim routine) until convergence in E, S^2 and Sz(i)
+  =#
+
+  # default sweeps
+  sweeps0 = Sweeps(5)
+  maxdim!(sweeps0, 20,50,100,100,200)
+  cutoff!(sweeps0, 1E-5,1E-5,1E-5,1E-8,1E-8)
+
+  if ψn===nothing #ground state
+      Ed,ψd = dmrg(H,ψi,sweeps0)
+  else #excited states
+      Ed,ψd = dmrg(H,ψn,ψi,sweeps0;weight=w)
+  end
+  S2d = inner(ψd',S2,ψd)
+  Szid = [inner(ψd',Szi[i],ψd) for i in eachindex(Szi)]
+
+  # extra sweeps
+  sweep1 = Sweeps(1)
+  maxdim!(sweep1, maxdimi)
+  cutoff!(sweep1, cutoff)
+
+  j = 0
+  E,ψ = Ed,ψd
+  maxdim = maxdimi
+  E_conv, S2_conv, Szi_conv = false, false, false
+  while true
+    if ψn===nothing #ground state
+      Ee,ψe = dmrg(H,ψd,sweep1)
+    else #excited states
+      Ee,ψe = dmrg(H,ψn,ψd,sweep1;weight=w)
+    end
+    S2e = inner(ψe',S2,ψe)
+    Szie = [inner(ψe',Szi[i],ψe) for i in eachindex(Szi)]
+    
+    # Convergence checks, TODO: change to two times in a row converged or so
+    if abs(Ed-Ee) < precE
+      E_conv = true
+      println("E converged")
+    end
+
+    if abs(S2d-S2e) < precS2
+      S2_conv = true
+      println("S² converged")
+    end
+
+    if maximum(abs.(Szid-Szie)) < precSzi
+      Szi_conv = true
+      println("Sz(i) converged")
+    end
+
+    # TODO: check different things some times
+    if abs(Ed-Ee) < precE && # abs(S2d-S2e) < precS2 &&
+      maximum(abs.(Szid-Szie)) < precSzi
+      j += 1
+    else
+      j = 0
+    end
+
+    if j==2
+      E,ψ = Ee,ψe
+      break
+    end
+
+    Ed,ψd = Ee,ψe
+    S2d = S2e
+    Szid = Szie
+
+    maxdim += maxdimstep
+    maxdim!(sweep1, maxdim)
+  end
+
+  return(E,ψ)
+end
+
+# main #
+
+let 
+start_time = DateTime(now())
+
+# Check if the correct number of arguments is provided
+if length(ARGS) < 8
+  println("Usage: julia DMRG_template.jl <s> <N> <J1> <J2> <Sz> <nexc> <conserve_symmetry> <print_HDF5>")
+  exit(1)
+end
+
+# physical parameters
+s = parse(Float64, ARGS[1])
+N = parse(Int, ARGS[2])
+J1 = parse(Float64, ARGS[3])
+J2 = parse(Float64, ARGS[4])
+
+# other parameters
+Sz = parse(Int, ARGS[5])
+nexc = parse(Int, ARGS[6])
+
+try
+  conserve_symmetry = parse(Bool, ARGS[7])
+catch e
+  throw(ArgumentError("Failed to parse conserve_symmetry as Bool: $e"))
+end
+
+try
+  print_HDF5 = parse(Bool, ARGS[8])
+catch e
+  throw(ArgumentError("Failed to parse print_HDF5 as Bool: $e"))
+end
+
+
+precE = 1E-6
+precS2 = 1E-5
+precSzi = 1E-5
+w = 1E5 # penalty for non-orthogonality
+linkdim = 100 # variable to randomize initial MPS
+
+# system
+Nsites = N
+if (2*s)%2 == 0
+  sites = siteinds("S="*string(Int(s)),Nsites;conserve_sz=conserve_symmetry)
+else
+  sites = siteinds("S="*string(Int(2*s))*"/2",Nsites;conserve_sz=conserve_symmetry)
+end
+
+# initial state
+statei = spinstate_sNSz(s, N, Sz)
+ψi = randomMPS(sites, statei, linkdim)
+
+# S² operator
+S2 = S2_op(Nsites, sites)
+
+# Sz(i) operator
+Szi = [Szi_op(i, sites) for i in 1:Nsites]
+
+# Hamiltonian
+H = Hamiltonian(N, J1, J2, sites)
+
+# ground state
+E0, ψ0 = DMRGmaxdim_convES2Szi(H, ψi, precE, precS2, precSzi, S2, Szi)
+
+En = [E0]
+ψn = [ψ0]
+
+# excited states
+for i in 1:nexc
+  E,ψ = DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi,ψn=ψn,w=w)
+  push!(En,E)
+  push!(ψn,ψ)
+end
+
+# <ψn|S²|ψn>
+S2n = [inner(ψn[i]',S2,ψn[i]) for i in eachindex(ψn)]
+
+# <ψn|Sz(i)|ψn>
+Szin = [[inner(ψn[i]',Szi[j],ψn[i]) for j in 1:Nsites] for i in eachindex(ψn)]
+
+fw = open("Szi_Sz=$(Sz).txt", "w")
+# outputs
+write(fw, "List of E:\n")
+write(fw, string(En), "\n")
+write(fw, "\n")
+write(fw, "List of S^2:\n")
+write(fw, string(S2n), "\n")
+write(fw, "\n")
+write(fw, "List of Szi:\n")
+write(fw, string(Szin), "\n")
+write(fw, "----------\n\n")
+write(fw,"total time = "*
+    string( Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now())
+    - Dates.DateTime(start_time))) ) * "\n")
+
+close(fw)
+
+# TODO: print to HDF5 file (option for the user)
+if print_HDF5
+  println("Printing to HDF5 file")
+
+  # Open an HDF5 file for writing
+  h5file = h5open("psin_data.h5", "w")
+
+# Write the MPS data to the HDF5 file
+for (i, psi) in enumerate(ψn)
+  group = create_group(h5file, "state_$i")
+  write(group, "ψ", psi)
+end
+
+  # Close the HDF5 file
+  close(h5file)
+end
+
+
+end
