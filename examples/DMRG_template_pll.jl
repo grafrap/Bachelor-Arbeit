@@ -145,12 +145,12 @@ end
 
 
 # TODO: Thsi is general, right?
-function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
+function DMRGmaxdim_convES2Szi(H_,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   maxdimstep=100,cutoff=1E-8,ψn=nothing,w=nothing)
   #=
      DMRG sweeps (maxdim routine) until convergence in E, S^2 and Sz(i)
   =#
-  H = DistributedSum(H)
+  H = DistributedSum([H_])
   # default sweeps
   sweeps0 = Sweeps(5)
   maxdim!(sweeps0, 20,50,100,100,200)
@@ -188,10 +188,10 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
       println("E converged")
     end
 
-    if abs(S2d-S2e) < precS2
-      S2_conv = true
-      println("S² converged")
-    end
+    # if abs(S2d-S2e) < precS2
+    #   S2_conv = true
+    #   println("S² converged")
+    # end
 
     if maximum(abs.(Szid-Szie)) < precSzi
       Szi_conv = true
@@ -292,6 +292,9 @@ Szi = [Szi_op(i, sites) for i in 1:Nsites]
 # Hamiltonian
 H = Hamiltonian(N, J1, J2, sites)
 
+ℋs = partition(H, npartitions; in_partition_alg)
+Hs = [MPO(ℋ, sites) for ℋ in ℋs]
+
 # ground state
 E0, ψ0 = DMRGmaxdim_convES2Szi(H, ψi, precE, precS2, precSzi, S2, Szi)
 
@@ -328,7 +331,6 @@ write(fw,"total time = "*
 
 close(fw)
 
-# TODO: print to HDF5 file (option for the user)
 if print_HDF5
   println("Printing to HDF5 file")
 

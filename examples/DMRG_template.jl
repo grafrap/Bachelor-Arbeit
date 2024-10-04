@@ -15,6 +15,7 @@ function spinstate_sNSz(s,N,Sz;random="yes")
        - as of now, only s=1/2 and s=1 are possible
        - for s=1, the state created has minimal nr of "Z0"
        more info on the available spin states: https://itensor.github.io/ITensors.jl/dev/IncludedSiteTypes.html
+       more on new s: https://github.com/ITensor/ITensors.jl/blob/main/src/lib/SiteTypes/src/sitetypes/spinhalf.jl
   =#
   # In total adds up to Sz, with available states from -s, -s+1, ..., s
     # TODO: Generalize this function for many s
