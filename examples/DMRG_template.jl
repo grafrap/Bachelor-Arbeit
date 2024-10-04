@@ -1,9 +1,10 @@
 using ITensors
-# using ITensorParallel
+using ITensorMPS
 using Dates
 using Random
 using HDF5
 
+# run this script with: julia DMRG_template.jl 0.5 10 23 38 1 0 true true
 # functions #
 
 function spinstate_sNSz(s,N,Sz;random="yes")
@@ -13,51 +14,57 @@ function spinstate_sNSz(s,N,Sz;random="yes")
        Notes:
        - as of now, only s=1/2 and s=1 are possible
        - for s=1, the state created has minimal nr of "Z0"
+       more info on the available spin states: https://itensor.github.io/ITensors.jl/dev/IncludedSiteTypes.html
   =#
+  # In total adds up to Sz, with available states from -s, -s+1, ..., s
     # TODO: Generalize this function for many s
-    # s=1/2
+    # general s
+  if abs(Sz) > s*N
+    throw(ArgumentError("Check s, N and Sz"))
+  end
+
+  state = fill("Dn", N)
+  
+  # s=1/2
   if s==1/2
-      if N%2 == abs(2*Sz)%2 && abs(Sz) <= s*N
-          state = ["Dn" for i in 1:N]
-          for i in 1:Int(N/2+Sz)
-              state[i] = "Up"
-          end
-          if random=="yes"
-              shuffle!(state)
-          end
-      else
-          println("ERROR: check s, N and Sz")
-          exit()
+    if N%2 == abs(2*Sz)%2
+      print("N mod 2 is: ")
+      println(N%2)
+      for i in 1:Int(N/2+Sz)
+        state[i] = "Up"
       end
+      # example output ["Up", "Dn", "Up", "Up", "Up", "Dn", "Up", "Up", "Dn", "Dn"] for s = 0.5, Sz = 1, N = 10
+    else
+      throw(ArgumentError("Check s, N and Sz"))
+    end
   # s=1
   elseif s==1
-      if (2*Sz)%2 == 0 && abs(Sz) <= s*N
-          state = ["Dn" for i in 1:N]
-          if N%2==0
-              for i in 1:Int(N/2+floor(Sz/2))
-                  state[i] = "Up"
-              end
-              if abs(Sz%2)==1
-                  state[Int(N/2+floor(Sz/2))+1] = "Z0"
-              end
-          elseif N%2==1
-              for i in 1:Int(floor(N/2)+ceil(Sz/2))
-                  state[i] = "Up"
-              end
-              if abs(Sz%2)==0
-                  state[Int(floor(N/2)+ceil(Sz/2))+1] = "Z0"
-              end
-          end
-          if random=="yes"
-              shuffle!(state)
-          end
-      else
-          println("ERROR: check s, N and Sz")
-          exit()
+    if (2*Sz)%2 == 0
+      if N%2==0
+        for i in 1:Int(N/2+floor(Sz/2))
+          state[i] = "Up"
+        end
+        if abs(Sz%2)==1
+          state[Int(N/2+floor(Sz/2))+1] = "Z0"
+        end
+      elseif N%2==1
+        for i in 1:Int(floor(N/2)+ceil(Sz/2))
+          state[i] = "Up"
+        end
+        if abs(Sz%2)==0
+          state[Int(floor(N/2)+ceil(Sz/2))+1] = "Z0"
+        end
       end
+      throw(ArgumentError("Check s, N and Sz"))
+    end
+    # example output: ["Z0", "Dn", "Up", "Up", "Dn", "Up", "Up", "Up", "Dn", "Dn"] for s = 1, Sz = 1, N = 10
   else
-      println("ERROR: as of now, only s=1/2 and s=1 are possible")
-      exit()
+    println("ERROR: as of now, only s=1/2 and s=1 are possible")
+    exit()
+  end
+
+  if random=="yes"
+    shuffle!(state)
   end
 
   return(state)
@@ -231,6 +238,7 @@ J2 = parse(Float64, ARGS[4])
 Sz = parse(Int, ARGS[5])
 nexc = parse(Int, ARGS[6])
 
+conserve_symmetry, print_HDF5 = true, true
 try
   conserve_symmetry = parse(Bool, ARGS[7])
 catch e
@@ -260,7 +268,9 @@ end
 
 # initial state
 statei = spinstate_sNSz(s, N, Sz)
+println(statei)
 ψi = randomMPS(sites, statei, linkdim)
+print(ψi)
 
 # S² operator
 S2 = S2_op(Nsites, sites)
