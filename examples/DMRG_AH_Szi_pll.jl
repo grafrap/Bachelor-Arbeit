@@ -2,6 +2,7 @@
 using MPI: MPI
 MPI.Init()
 
+using Profile
 using ITensors
 using ITensorMPS
 using ITensorParallel
@@ -11,7 +12,7 @@ using HDF5
 using LinearAlgebra: BLAS
 using Strided
 # parallel dmrg in C++: https://github.com/emstoudenmire/parallelDMRG/blob/master/parallel_dmrg.h
-
+# mpiexecjl -n 2 julia -t2 DMRG_AH_Szi_pll.jl
 ###############################################################################
 function bcast(obj, root::Integer, comm::MPI.Comm)
   isroot = MPI.Comm_rank(comm) == root
@@ -169,22 +170,20 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
     #=
        DMRG sweeps (maxdim routine) until convergence in E, S^2 and Sz(i)
     =#
-    if !(H isa MPO)
-      H = MPO(H, siteinds(ψi))
-    end
     # default sweeps
 
+    # @show H
     sweeps0 = Sweeps(5)
     maxdim!(sweeps0, 20,50,100,100,200)
     cutoff!(sweeps0, 1E-5,1E-5,1E-5,1E-8,1E-8)
 
-    if ψn==nothing #ground state
+    if ψn===nothing #ground state
         Ed,ψd = dmrg(H,ψi,sweeps0)
     else #excited states
         Ed,ψd = dmrg(H,ψn,ψi,sweeps0;weight=w)
     end
     S2d = inner(ψd',S2,ψd)
-    Szid = [inner(ψd',Szi[i],ψd) for i in 1:length(Szi)]
+    Szid = [inner(ψd',Szi[i],ψd) for i in eachindex(Szi)]
 
     # extra sweeps
     sweep1 = Sweeps(1)
@@ -195,13 +194,13 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
     E,ψ = Ed,ψd
     maxdim = maxdimi
     while true
-        if ψn==nothing #ground state
+        if ψn===nothing #ground state
             Ee,ψe = dmrg(H,ψd,sweep1)
         else #excited states
             Ee,ψe = dmrg(H,ψn,ψd,sweep1;weight=w)
         end
         S2e = inner(ψe',S2,ψe)
-        Szie = [inner(ψe',Szi[i],ψe) for i in 1:length(Szi)]
+        Szie = [inner(ψe',Szi[i],ψe) for i in eachindex(Szi)]
 
         if abs(Ed-Ee) < precE && abs(S2d-S2e) < precS2 &&
             maximum(abs.(Szid-Szie)) < precSzi
@@ -232,6 +231,8 @@ end
 
 # main #
 let
+Profile.init(delay=0.01)
+@profile begin
 start_time = DateTime(now())
 BLAS.set_num_threads(1)
 NDTensors.Strided.disable_threads()
@@ -241,11 +242,10 @@ ITensors.enable_threaded_blocksparse(true)
 @show ITensors.using_threaded_blocksparse()
 # physical parameters
 s = 1/2
-N = 10
+N = 100
 J1 = 23
 J2 = 38
 
-prt(227)
 # other parameters
 Sz = +1
 nexc = 0
@@ -255,70 +255,55 @@ precSzi = 0.00001
 w = 10000.0 #penalty for non-orthogonality
 linkdim = 100 #variable to randomize initial MPS
 
-# open files
-fw = open("Szi_Sz=$(Sz)_pll.txt", "w")
 
-ITensors.enable_threaded_blocksparse(true)
 # system
 Nsites = N
-if (2*s)%2 == 0
+prt(248)
+# initial state
+
+rank = MPI.Comm_rank(MPI.COMM_WORLD)
+nprocs = MPI.Comm_size(MPI.COMM_WORLD)
+
+if rank == 0
+  if (2*s)%2 == 0
     sites = siteinds("S="*string(Int(s)),Nsites;conserve_sz=true)
   else
     sites = siteinds("S="*string(Int(2*s))*"/2",Nsites;conserve_sz=true)
-end
-prt(248)
-# initial state
-statei = spinstate_sNSz(s,N,Sz)
-
-prt(254)
-rank = MPI.Comm_rank(MPI.COMM_WORLD)
-nprocs = MPI.Comm_size(MPI.COMM_WORLD)
-if rank == 0
+  end
+    statei = spinstate_sNSz(s,N,Sz)
     ψi = randomMPS(sites,statei,linkdim)
     S2 = S2_op(Nsites,sites)
     Szi = [Szi_op(i,sites) for i in 1:Nsites]
     H = H_Heis_J1J2_1D_OBC(N,J1,J2,sites)
     ℋs = partition(H, nprocs)
 else
+    sites = nothing
     ψi = nothing
     S2 = nothing
     Szi = nothing
     H = nothing
     ℋs = nothing
-end
-# ψi = randomMPS(sites,statei,linkdim)
-
-# S^2 operator
-
-# Sz(i) operator
+  end
   
-prt(262)
-sites = bcast(sites, 0, MPI.COMM_WORLD)
+  sites = bcast(sites, 0, MPI.COMM_WORLD)
 ψi = bcast(ψi, 0, MPI.COMM_WORLD)
 S2 = bcast(S2, 0, MPI.COMM_WORLD)
 Szi = bcast(Szi, 0, MPI.COMM_WORLD)
 H = bcast(H, 0, MPI.COMM_WORLD)
 ℋs = bcast(ℋs, 0, MPI.COMM_WORLD)
-prt(267)
 # Hamiltonian
 
-# in_partition_alg = "sum_split"
-# println("rank = ", rank, " ℋs:", ℋs)
+
 which_proc = MPI.Comm_rank(MPI.COMM_WORLD) + 1
 MPI.Barrier(MPI.COMM_WORLD)
-@show ℋs
-@show which_proc
-@show ℋs[which_proc] 
+
 mpo_sum_term = MPISumTerm(MPO(ℋs[which_proc], sites), MPI.COMM_WORLD)
-# println("rank = ", rank, " sum_term:", mpo_sum_term)
 prt(273)
-# Hs = [MPO(ℋ, sites) for ℋ in ℋs]
-# H = DistributedSum(Hs)
-# H_ = DistributedSum(Hs)
-# run DMRG
+
 ## groundstate
 MPI.Barrier(MPI.COMM_WORLD)
-E0,ψ0 =  DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi)
+sweeps = Sweeps(5)
+E0,ψ0 = DMRGmaxdim_convES2Szi(mpo_sum_term,ψi,precE,precS2,precSzi,S2,Szi)
 
 ## excited states
 En = [E0]
@@ -338,12 +323,14 @@ S2n = [inner(ψn[n]',S2,ψn[n]) for n in 1:length(En)]
 # <psin|Sz(i)|psin>
 Szin = [[0. for i in 1:Nsites] for n in 1:length(En)]
 for n in 1:length(En)
-    for i in 1:Nsites
-        Szin[n][i] = inner(ψn[n]',Szi[i],ψn[n])
+  for i in 1:Nsites
+    Szin[n][i] = inner(ψn[n]',Szi[i],ψn[n])
     end
-end
-prt(302)
-# outputs
+  end
+  prt(302)
+  # outputs
+# open files
+fw = open("Szi_Sz=$(Sz)_pll.txt", "w")
 write(fw, "List of E:\n")
 write(fw, string(En), "\n")
 write(fw, "\n")
@@ -354,8 +341,8 @@ write(fw, "List of Szi:\n")
 write(fw, string(Szin), "\n")
 write(fw, "----------\n\n")
 write(fw,"total time = "*
-    string( Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now())
-    - Dates.DateTime(start_time))) ) * "\n")
+string( Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now())
+- Dates.DateTime(start_time))) ) * "\n")
 
 # close file
 close(fw)
@@ -373,5 +360,14 @@ end
 
 # Close the HDF5 file
 close(h5file)
+MPI.Finalize()
 end
+# print profile to external file
+open("profile_output.txt", "w") do io
+  Profile.print(io; groupby = :thread)
+end
+end
+
+
+
 ###############################################################################
