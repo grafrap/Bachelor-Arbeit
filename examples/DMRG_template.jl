@@ -29,8 +29,6 @@ function spinstate_sNSz(s,N,Sz;random="yes")
   # s=1/2
   if s==1/2
     if N%2 == abs(2*Sz)%2
-      print("N mod 2 is: ")
-      println(N%2)
       for i in 1:Int(N/2+Sz)
         state[i] = "Up"
       end
@@ -110,37 +108,88 @@ function Szi_op(i, sites)
   return Szi
 end
 
-function Hamiltonian(N, J1, J2, sites)
+function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
+  E::Vector = zeros(N), J::Matrix = zeros(N,N), Dij::Matrix = [zeros(3) for _ in 1:N, _ in 1:N])
   #= 
-    Hamiltonian TODO: Add equations
-    # Option one: function that contains the equations
-    # Option two: visual scheme that allows to choose parameters
-    # Option three: User provides the function
+    General Hamiltonian for a spin chain with N sites
+      H = sum_{i} g_i * μ_B * B * S_i (Zeeman term, the μ_B and B are included in g)
+          + sum_{i} (D_i * (S^z_i)^2 + E_i * [(S^x_i)^2 - (S^y_i)^2]) (Anisotropy term)
+          + sum_{i,j} J_{ij} * S_i * S_j (Heisenberg term)
+          + sum_{i,j} D_{ij} * (S_i × S_j) (Dzyaloshinskii-Moriya term)
   =#
+
+  @assert length(g) == N "g must have length N"
+  @assert length(D) == N "D must have length N"
+  @assert length(E) == N "E must have length N"
+  @assert size(J) == (N,N) "J must have size (N,N)"
+  @assert size(Dij) == (N,N) "Dij must have size (N,N)"
 
   ampo = AutoMPO()
 
-  #J1
-  if J1 != 0.0
-    for i in 1:2:N-1
-      ampo += 0#TODO: depending on equations
+  # Zeeman term (written in terms of S+, S-, Sz)
+  for i in 1:N
+    if g[i] != 0.0
+      ampo += g[i], "Sz", i
+      ampo += g[i]/2, "S+", i
+      ampo += g[i]/2, "S-", i
     end
   end
 
-  #J2
-  if J2 != 0.0
-    for i in 2:2:N-1
-      ampo += 0#TODO: depending on equations
+
+  # Anisotropy term (written in terms of S+, S-, Sz)
+  for i in 1:N
+    if D[i] != 0.0
+      ampo += D[i], "Sz", i, "Sz", i
+    end
+    if E[i] != 0.0
+      ampo += E[i], "S+", i, "S-", i 
+      ampo -= E[i], "Sz", i   
+    end 
+  end
+
+  # Heisenberg coupling term
+  for i in 1:N-1
+    for j in i+1:N
+      if J[i,j] != 0.0
+        ampo += J[i,j], "Sz", i, "Sz", j
+        ampo += J[i,j]/2, "S+", i, "S-", j
+        ampo += J[i,j]/2, "S-", i, "S+", j
+      end
     end
   end
 
+  # Dzyaloshinskii-Moriya term
+  for i in 1:N-1
+    for j in i+1:N
+      # Dij[i,j] = [Dij_x, Dij_y, Dij_z]
+      if Dij[i,j][1] != 0.0
+        ampo += Dij[i,j][1]/(2im), "S+", i, "Sz", j
+        ampo -= Dij[i,j][1]/(2im), "S-", i, "Sz", j
+        ampo -= Dij[i,j][1]/(2im), "Sz", i, "S+", j
+        ampo += Dij[i,j][1]/(2im), "Sz", i, "S-", j
+      end
+
+      if Dij[i,j][2] != 0.0
+        ampo += Dij[i,j][2]/2, "Sz", i, "S+", j
+        ampo += Dij[i,j][2]/2, "Sz", i, "S-", j
+        ampo -= Dij[i,j][2]/2, "S+", i, "Sz", j
+        ampo -= Dij[i,j][2]/2, "S-", i, "Sz", j
+      end
+
+      if Dij[i,j][3] != 0.0
+        ampo += Dij[i,j][3]/(2im), "S-", i, "S+", j
+        ampo -= Dij[i,j][3]/(2im), "S+", i, "S-", j
+      end
+    end
+  end
+
+  # Create the MPO
   H = MPO(ampo, sites)
 
   return H
 end
 
 
-# TODO: Thsi is general, right?
 function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   maxdimstep=100,cutoff=1E-8,ψn=nothing,w=nothing)
   #=
@@ -152,10 +201,12 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   maxdim!(sweeps0, 20,50,100,100,200)
   cutoff!(sweeps0, 1E-5,1E-5,1E-5,1E-8,1E-8)
 
-  if ψn===nothing #ground state
-      Ed,ψd = dmrg(H,ψi,sweeps0)
-  else #excited states
-      Ed,ψd = dmrg(H,ψn,ψi,sweeps0;weight=w)
+  if ψn===nothing 
+    #ground state
+    Ed,ψd = dmrg(H,ψi,sweeps0)
+  else 
+    #excited states
+    Ed,ψd = dmrg(H,ψn,ψi,sweeps0;weight=w)
   end
   S2d = inner(ψd',S2,ψd)
   Szid = [inner(ψd',Szi[i],ψd) for i in eachindex(Szi)]
@@ -168,7 +219,7 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   j = 0
   E,ψ = Ed,ψd
   maxdim = maxdimi
-  E_conv, S2_conv, Szi_conv = false, false, false
+  E_conv, S2_conv, Szi_conv = 0, 0, 0
   while true
     if ψn===nothing #ground state
       Ee,ψe = dmrg(H,ψd,sweep1)
@@ -180,22 +231,33 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
     
     # Convergence checks, TODO: change to two times in a row converged or so
     if abs(Ed-Ee) < precE
-      E_conv = true
+      E_conv += 1
+    else
+      E_conv = 0
+    end
+    if E_conv == 2
       println("E converged")
     end
 
     if abs(S2d-S2e) < precS2
-      S2_conv = true
+      S2_conv += 1
+    else
+      S2_conv = 0
+    end
+    if S2_conv == 2
       println("S² converged")
     end
 
     if maximum(abs.(Szid-Szie)) < precSzi
-      Szi_conv = true
+      Szi_conv += 1
+    else
+      Szi_conv = 0
+    end
+    if Szi_conv == 2 
       println("Sz(i) converged")
     end
 
-    # TODO: check different things some times
-    if abs(Ed-Ee) < precE && # abs(S2d-S2e) < precS2 &&
+    if abs(Ed-Ee) < precE && 
       maximum(abs.(Szid-Szie)) < precSzi
       j += 1
     else
@@ -224,8 +286,8 @@ let
 start_time = DateTime(now())
 
 # Check if the correct number of arguments is provided
-if length(ARGS) < 8
-  println("Usage: julia DMRG_template.jl <s> <N> <J1> <J2> <Sz> <nexc> <conserve_symmetry> <print_HDF5>")
+if length(ARGS) < 7
+  println("Usage: julia DMRG_template.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5>")
   exit(1)
 end
 
@@ -233,21 +295,28 @@ end
 s = parse(Float64, ARGS[1])
 N = parse(Int, ARGS[2])
 J1 = parse(Float64, ARGS[3])
-J2 = parse(Float64, ARGS[4])
+
+# create the J matrix, with J1 on the off-diagonal TODO: generalize for all J matrices
+J = zeros(N,N)
+for i in 1:N-1
+  J[i,i+1] = J1
+  J[i+1,i] = J1
+end
 
 # other parameters
-Sz = parse(Int, ARGS[5])
-nexc = parse(Int, ARGS[6])
+Sz = parse(Float64, ARGS[4]) # Sz = 1/2 or 0
+@assert Sz == 1/2 || Sz == 0 "Sz must be 1/2 or 0"
+nexc = parse(Int, ARGS[5])
 
 conserve_symmetry, print_HDF5 = true, true
 try
-  conserve_symmetry = parse(Bool, ARGS[7])
+  conserve_symmetry = parse(Bool, ARGS[6])
 catch e
   throw(ArgumentError("Failed to parse conserve_symmetry as Bool: $e"))
 end
 
 try
-  print_HDF5 = parse(Bool, ARGS[8])
+  print_HDF5 = parse(Bool, ARGS[7])
 catch e
   throw(ArgumentError("Failed to parse print_HDF5 as Bool: $e"))
 end
@@ -269,9 +338,9 @@ end
 
 # initial state
 statei = spinstate_sNSz(s, N, Sz)
-println(statei)
+# println(statei)
 ψi = randomMPS(sites, statei, linkdim)
-print(ψi)
+# print(ψi)
 
 # S² operator
 S2 = S2_op(Nsites, sites)
@@ -280,7 +349,7 @@ S2 = S2_op(Nsites, sites)
 Szi = [Szi_op(i, sites) for i in 1:Nsites]
 
 # Hamiltonian
-H = Hamiltonian(N, J1, J2, sites)
+H = Hamiltonian(N, sites, J=J)
 
 # ground state
 E0, ψ0 = DMRGmaxdim_convES2Szi(H, ψi, precE, precS2, precSzi, S2, Szi)
@@ -318,7 +387,7 @@ write(fw,"total time = "*
 
 close(fw)
 
-# TODO: print to HDF5 file (option for the user)
+
 if print_HDF5
   println("Printing to HDF5 file")
 
