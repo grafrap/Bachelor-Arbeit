@@ -109,7 +109,7 @@ function Szi_op(i, sites)
 end
 
 function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
-  E::Vector = zeros(N), J::Matrix = zeros(N,N), Dij::Matrix = [zeros(3) for _ in 1:N, _ in 1:N])
+  E::Vector = zeros(N), J::Matrix = zeros(N,N), Dij::Matrix = [zeros(3) for _ in 1:N, _ in 1:N], B::Vector = zeros(3))
   #= 
     General Hamiltonian for a spin chain with N sites
       H = sum_{i} g_i * μ_B * B * S_i (Zeeman term, the μ_B and B are included in g)
@@ -125,13 +125,20 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
   @assert size(Dij) == (N,N) "Dij must have size (N,N)"
 
   ampo = AutoMPO()
-
+  
+  # create B * g, to get a vector of dimensions N x 3
+  g = [[B[1]*g[i], B[2]*g[i], B[3]*g[i]] for i in 1:N]
+  println(g)
   # Zeeman term (written in terms of S+, S-, Sz)
   for i in 1:N
-    if g[i] != 0.0
-      ampo += g[i], "Sz", i
-      ampo += g[i]/2, "S+", i
-      ampo += g[i]/2, "S-", i
+    if g[i][1] != 0.0
+      ampo += g[i][1], "Sx", i
+    end 
+    if g[i][2] != 0.0
+      ampo += g[i][2], "Sy", i
+    end
+    if g[i][3] != 0.0
+      ampo += g[i][3], "Sz", i
     end
   end
 
@@ -142,8 +149,8 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
       ampo += D[i], "Sz", i, "Sz", i
     end
     if E[i] != 0.0
-      ampo += E[i], "S+", i, "S-", i 
-      ampo -= E[i], "Sz", i   
+      ampo += E[i], "Sx", i, "Sx", i 
+      ampo -= E[i], "Sy", i, "Sy", i   
     end 
   end
 
@@ -151,9 +158,9 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
   for i in 1:N-1
     for j in i+1:N
       if J[i,j] != 0.0
+        ampo += J[i,j], "Sx", i, "Sx", j
+        ampo += J[i,j], "Sy", i, "Sy", j
         ampo += J[i,j], "Sz", i, "Sz", j
-        ampo += J[i,j]/2, "S+", i, "S-", j
-        ampo += J[i,j]/2, "S-", i, "S+", j
       end
     end
   end
@@ -163,26 +170,21 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
     for j in i+1:N
       # Dij[i,j] = [Dij_x, Dij_y, Dij_z]
       if Dij[i,j][1] != 0.0
-        ampo += Dij[i,j][1]/(2im), "S+", i, "Sz", j
-        ampo -= Dij[i,j][1]/(2im), "S-", i, "Sz", j
-        ampo -= Dij[i,j][1]/(2im), "Sz", i, "S+", j
-        ampo += Dij[i,j][1]/(2im), "Sz", i, "S-", j
+        ampo += Dij[i,j][1], "Sy", i, "Sz", j
+        ampo -= Dij[i,j][1], "Sz", i, "Sy", j
       end
-
       if Dij[i,j][2] != 0.0
-        ampo += Dij[i,j][2]/2, "Sz", i, "S+", j
-        ampo += Dij[i,j][2]/2, "Sz", i, "S-", j
-        ampo -= Dij[i,j][2]/2, "S+", i, "Sz", j
-        ampo -= Dij[i,j][2]/2, "S-", i, "Sz", j
+        ampo += Dij[i,j][2], "Sz", i, "Sx", j
+        ampo -= Dij[i,j][2], "Sx", i, "Sz", j
       end
-
       if Dij[i,j][3] != 0.0
-        ampo += Dij[i,j][3]/(2im), "S-", i, "S+", j
-        ampo -= Dij[i,j][3]/(2im), "S+", i, "S-", j
-      end
+        ampo += Dij[i,j][3], "Sx", i, "Sy", j
+        ampo -= Dij[i,j][3], "Sy", i, "Sx", j
+      end      
     end
   end
 
+  println(ampo)
   # Create the MPO
   H = MPO(ampo, sites)
 
