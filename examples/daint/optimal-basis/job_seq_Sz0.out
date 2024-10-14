@@ -1,0 +1,60 @@
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+After sweep 1 energy=24844.557476260237  maxlinkdim=20 maxerr=5.59E-02 time=29.763
+After sweep 2 energy=18715.947854881913  maxlinkdim=50 maxerr=5.09E-03 time=4.049
+After sweep 3 energy=17215.709954330145  maxlinkdim=100 maxerr=2.34E-03 time=5.650
+After sweep 4 energy=17188.111865058752  maxlinkdim=100 maxerr=2.48E-03 time=6.392
+After sweep 5 energy=16829.38794391815  maxlinkdim=200 maxerr=7.72E-04 time=9.011
+After sweep 1 energy=16758.863265871463  maxlinkdim=300 maxerr=2.66E-04 time=11.621
+After sweep 1 energy=16721.50433616869  maxlinkdim=800 maxerr=6.65E-06 time=36.031
+After sweep 1 energy=16718.24549301865  maxlinkdim=1300 maxerr=2.00E-06 time=79.630
+After sweep 1 energy=16715.350141604413  maxlinkdim=1800 maxerr=9.62E-07 time=127.473
+After sweep 1 energy=16712.864445685434  maxlinkdim=2300 maxerr=3.70E-07 time=170.255
+After sweep 1 energy=16710.76314274739  maxlinkdim=2799 maxerr=1.57E-07 time=203.863
+After sweep 1 energy=16708.834344610324  maxlinkdim=3300 maxerr=9.15E-08 time=232.931
+After sweep 1 energy=16707.112819119637  maxlinkdim=3800 maxerr=3.94E-08 time=251.322
+After sweep 1 energy=16705.56082239315  maxlinkdim=4300 maxerr=2.36E-08 time=279.790
+After sweep 1 energy=16704.249853145804  maxlinkdim=4798 maxerr=1.18E-08 time=299.482
+After sweep 1 energy=16703.188883802028  maxlinkdim=4839 maxerr=1.00E-08 time=313.207
+After sweep 1 energy=16702.306453185323  maxlinkdim=5053 maxerr=1.00E-08 time=323.121
+After sweep 1 energy=16701.603098634045  maxlinkdim=5106 maxerr=1.00E-08 time=325.778
+After sweep 1 energy=16701.03959610211  maxlinkdim=5179 maxerr=1.00E-08 time=335.005
+After sweep 1 energy=16700.592688693196  maxlinkdim=5359 maxerr=1.00E-08 time=344.452
+After sweep 1 energy=16700.2540900988  maxlinkdim=5199 maxerr=1.00E-08 time=345.758
+After sweep 1 energy=16699.994670854536  maxlinkdim=5256 maxerr=1.00E-08 time=340.432
+After sweep 1 energy=16699.802412135108  maxlinkdim=5097 maxerr=1.00E-08 time=340.431
+After sweep 1 energy=16699.656913210136  maxlinkdim=5063 maxerr=1.00E-08 time=338.356
+After sweep 1 energy=16699.548087115807  maxlinkdim=4954 maxerr=1.00E-08 time=342.514
+After sweep 1 energy=16699.465704869017  maxlinkdim=4879 maxerr=1.00E-08 time=345.145
+After sweep 1 energy=16699.40386469904  maxlinkdim=4814 maxerr=1.00E-08 time=345.006
+After sweep 1 energy=16699.358104914114  maxlinkdim=4770 maxerr=1.00E-08 time=350.005
+After sweep 1 energy=16699.326065594447  maxlinkdim=4713 maxerr=1.00E-08 time=345.106
+After sweep 1 energy=16699.303907403413  maxlinkdim=4656 maxerr=1.00E-08 time=341.635
+After sweep 1 energy=16699.288355471966  maxlinkdim=4623 maxerr=1.00E-08 time=337.964
+After sweep 1 energy=16699.277550318035  maxlinkdim=4588 maxerr=1.00E-08 time=333.650
+After sweep 1 energy=16699.26982681333  maxlinkdim=4580 maxerr=1.00E-08 time=331.349
+After sweep 1 energy=16699.264103752925  maxlinkdim=4521 maxerr=1.00E-08 time=330.335
+After sweep 1 energy=16699.260273715587  maxlinkdim=4554 maxerr=1.00E-08 time=326.991
+After sweep 1 energy=16699.257757439635  maxlinkdim=4507 maxerr=1.00E-08 time=326.100
+After sweep 1 energy=16699.25609166733  maxlinkdim=4475 maxerr=1.00E-08 time=322.149
+After sweep 1 energy=16699.254953045016  maxlinkdim=4452 maxerr=1.00E-08 time=316.720
+After sweep 1 energy=16699.25414094706  maxlinkdim=4439 maxerr=1.00E-08 time=312.641
+After sweep 1 energy=16699.253498991577  maxlinkdim=4427 maxerr=1.00E-08 time=314.949
+
+
+
+Batch Job Summary Report (version 21.01.1) for Job "DMRG_seq" (57476743) on daint
+
+Job information (1/2)
+-----------------------------------------------------------------------------------------------------
+             Submit            Eligible               Start                 End    Elapsed Time limit
+------------------- ------------------- ------------------- ------------------- ---------- ----------
+2024-10-11T14:10:08 2024-10-11T14:10:08 2024-10-11T14:12:28 2024-10-11T17:18:15   03:05:47   04:00:00
+-----------------------------------------------------------------------------------------------------
+
+Job information (2/2)
+-------------------------------------------------------------
+    Username      Account    Partition   NNodes        Energy
+------------ ------------ ------------ -------- -------------
+       rgraf         em01       normal        1   1320.565 kJ
+

@@ -1,0 +1,103 @@
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+After sweep 1 energy=25568.348728059616  maxlinkdim=20 maxerr=5.74E-02 time=50.495
+After sweep 1 energy=25568.348728059616  maxlinkdim=20 maxerr=5.74E-02 time=39.991
+After sweep 2 energy=18952.239759627486  maxlinkdim=50 maxerr=5.78E-03 time=3.970
+After sweep 2 energy=18952.239759627486  maxlinkdim=50 maxerr=5.78E-03 time=3.794
+After sweep 3 energy=17214.879946408488  maxlinkdim=100 maxerr=2.52E-03 time=5.046
+After sweep 3 energy=17214.879946408488  maxlinkdim=100 maxerr=2.52E-03 time=5.045
+After sweep 4 energy=17187.829645901416  maxlinkdim=100 maxerr=2.52E-03 time=5.770
+After sweep 4 energy=17187.829645901416  maxlinkdim=100 maxerr=2.52E-03 time=5.770
+After sweep 5 energy=16829.245516781346  maxlinkdim=200 maxerr=7.71E-04 time=7.902
+After sweep 5 energy=16829.245516781346  maxlinkdim=200 maxerr=7.71E-04 time=7.902
+After sweep 1 energy=16758.835060108206  maxlinkdim=300 maxerr=2.65E-04 time=17.885
+After sweep 1 energy=16758.835060108206  maxlinkdim=300 maxerr=2.65E-04 time=11.591
+After sweep 1 energy=16721.50375060239  maxlinkdim=800 maxerr=6.65E-06 time=31.198
+After sweep 1 energy=16721.50375060239  maxlinkdim=800 maxerr=6.65E-06 time=31.222
+After sweep 1 energy=16718.236619579187  maxlinkdim=1300 maxerr=2.05E-06 time=65.538
+After sweep 1 energy=16718.236619579187  maxlinkdim=1300 maxerr=2.05E-06 time=65.574
+After sweep 1 energy=16715.32713230921  maxlinkdim=1800 maxerr=9.86E-07 time=101.513
+After sweep 1 energy=16715.32713230921  maxlinkdim=1800 maxerr=9.86E-07 time=101.554
+After sweep 1 energy=16712.845283570638  maxlinkdim=2300 maxerr=3.83E-07 time=141.610
+After sweep 1 energy=16712.845283570638  maxlinkdim=2300 maxerr=3.83E-07 time=141.502
+After sweep 1 energy=16710.680379854864  maxlinkdim=2800 maxerr=1.64E-07 time=170.476
+After sweep 1 energy=16710.680379854864  maxlinkdim=2800 maxerr=1.64E-07 time=170.136
+After sweep 1 energy=16708.732310357147  maxlinkdim=3300 maxerr=8.92E-08 time=188.550
+After sweep 1 energy=16708.732310357147  maxlinkdim=3300 maxerr=8.92E-08 time=187.608
+After sweep 1 energy=16707.045868246714  maxlinkdim=3800 maxerr=4.26E-08 time=204.533
+After sweep 1 energy=16707.045868246714  maxlinkdim=3800 maxerr=4.26E-08 time=203.144
+After sweep 1 energy=16705.527586871336  maxlinkdim=4298 maxerr=2.25E-08 time=229.290
+After sweep 1 energy=16705.527586871336  maxlinkdim=4298 maxerr=2.25E-08 time=228.799
+After sweep 1 energy=16704.231020086612  maxlinkdim=4799 maxerr=1.26E-08 time=248.197
+After sweep 1 energy=16704.231020086612  maxlinkdim=4799 maxerr=1.26E-08 time=247.495
+After sweep 1 energy=16703.163739284653  maxlinkdim=4854 maxerr=1.00E-08 time=255.964
+After sweep 1 energy=16703.163739284653  maxlinkdim=4854 maxerr=1.00E-08 time=253.871
+After sweep 1 energy=16702.280250429103  maxlinkdim=4969 maxerr=1.00E-08 time=262.121
+After sweep 1 energy=16702.280250429103  maxlinkdim=4969 maxerr=1.00E-08 time=261.485
+After sweep 1 energy=16701.56890534604  maxlinkdim=5081 maxerr=1.00E-08 time=266.351
+After sweep 1 energy=16701.56890534604  maxlinkdim=5081 maxerr=1.00E-08 time=265.532
+After sweep 1 energy=16700.995986129994  maxlinkdim=5342 maxerr=1.00E-08 time=273.260
+After sweep 1 energy=16700.995986129994  maxlinkdim=5342 maxerr=1.00E-08 time=273.812
+After sweep 1 energy=16700.55957152782  maxlinkdim=5226 maxerr=1.00E-08 time=275.275
+After sweep 1 energy=16700.55957152782  maxlinkdim=5226 maxerr=1.00E-08 time=275.269
+After sweep 1 energy=16700.230536713207  maxlinkdim=5198 maxerr=1.00E-08 time=265.414
+After sweep 1 energy=16700.230536713207  maxlinkdim=5198 maxerr=1.00E-08 time=265.317
+After sweep 1 energy=16699.979140521824  maxlinkdim=5200 maxerr=1.00E-08 time=267.464
+After sweep 1 energy=16699.979140521824  maxlinkdim=5200 maxerr=1.00E-08 time=266.700
+After sweep 1 energy=16699.791239021124  maxlinkdim=5105 maxerr=1.00E-08 time=269.425
+After sweep 1 energy=16699.791239021124  maxlinkdim=5105 maxerr=1.00E-08 time=268.660
+After sweep 1 energy=16699.652841199117  maxlinkdim=4999 maxerr=1.00E-08 time=269.465
+After sweep 1 energy=16699.652841199117  maxlinkdim=4999 maxerr=1.00E-08 time=269.411
+After sweep 1 energy=16699.5490383824  maxlinkdim=4938 maxerr=1.00E-08 time=268.096
+After sweep 1 energy=16699.5490383824  maxlinkdim=4938 maxerr=1.00E-08 time=267.863
+After sweep 1 energy=16699.470596016312  maxlinkdim=4862 maxerr=1.00E-08 time=269.221
+After sweep 1 energy=16699.470596016312  maxlinkdim=4862 maxerr=1.00E-08 time=269.637
+After sweep 1 energy=16699.410704220034  maxlinkdim=4852 maxerr=1.00E-08 time=267.401
+After sweep 1 energy=16699.410704220034  maxlinkdim=4852 maxerr=1.00E-08 time=266.888
+After sweep 1 energy=16699.365072888766  maxlinkdim=4860 maxerr=1.00E-08 time=272.313
+After sweep 1 energy=16699.365072888766  maxlinkdim=4860 maxerr=1.00E-08 time=271.959
+After sweep 1 energy=16699.331355729242  maxlinkdim=4821 maxerr=1.00E-08 time=272.608
+After sweep 1 energy=16699.331355729242  maxlinkdim=4821 maxerr=1.00E-08 time=272.239
+After sweep 1 energy=16699.30705633315  maxlinkdim=4742 maxerr=1.00E-08 time=266.863
+After sweep 1 energy=16699.30705633315  maxlinkdim=4742 maxerr=1.00E-08 time=266.364
+After sweep 1 energy=16699.29055711935  maxlinkdim=4652 maxerr=1.00E-08 time=266.067
+After sweep 1 energy=16699.29055711935  maxlinkdim=4652 maxerr=1.00E-08 time=265.806
+After sweep 1 energy=16699.279239969594  maxlinkdim=4605 maxerr=1.00E-08 time=264.662
+After sweep 1 energy=16699.279239969594  maxlinkdim=4605 maxerr=1.00E-08 time=264.177
+After sweep 1 energy=16699.271298301326  maxlinkdim=4578 maxerr=1.00E-08 time=261.159
+After sweep 1 energy=16699.271298301326  maxlinkdim=4578 maxerr=1.00E-08 time=260.994
+After sweep 1 energy=16699.26551530503  maxlinkdim=4569 maxerr=1.00E-08 time=257.806
+After sweep 1 energy=16699.26551530503  maxlinkdim=4569 maxerr=1.00E-08 time=257.643
+After sweep 1 energy=16699.26105275793  maxlinkdim=4572 maxerr=1.00E-08 time=255.033
+After sweep 1 energy=16699.26105275793  maxlinkdim=4572 maxerr=1.00E-08 time=255.249
+After sweep 1 energy=16699.258232905082  maxlinkdim=4520 maxerr=1.00E-08 time=251.939
+After sweep 1 energy=16699.258232905082  maxlinkdim=4520 maxerr=1.00E-08 time=251.460
+After sweep 1 energy=16699.256379000417  maxlinkdim=4484 maxerr=1.00E-08 time=250.231
+After sweep 1 energy=16699.256379000417  maxlinkdim=4484 maxerr=1.00E-08 time=249.892
+After sweep 1 energy=16699.25512001528  maxlinkdim=4459 maxerr=1.00E-08 time=243.466
+After sweep 1 energy=16699.25512001528  maxlinkdim=4459 maxerr=1.00E-08 time=243.212
+After sweep 1 energy=16699.254216811147  maxlinkdim=4442 maxerr=1.00E-08 time=239.635
+After sweep 1 energy=16699.254216811147  maxlinkdim=4442 maxerr=1.00E-08 time=239.464
+After sweep 1 energy=16699.25360298935  maxlinkdim=4430 maxerr=1.00E-08 time=246.577
+After sweep 1 energy=16699.25360298935  maxlinkdim=4430 maxerr=1.00E-08 time=246.204
+
+
+
+
+Batch Job Summary Report (version 21.01.1) for Job "DMRG_pll_2" (57476731) on daint
+
+Job information (1/2)
+-----------------------------------------------------------------------------------------------------
+             Submit            Eligible               Start                 End    Elapsed Time limit
+------------------- ------------------- ------------------- ------------------- ---------- ----------
+2024-10-11T14:08:34 2024-10-11T14:08:34 2024-10-11T14:09:58 2024-10-11T16:43:01   02:33:03   04:00:00
+-----------------------------------------------------------------------------------------------------
+
+Job information (2/2)
+-------------------------------------------------------------
+    Username      Account    Partition   NNodes        Energy
+------------ ------------ ------------ -------- -------------
+       rgraf         em01       normal        1   1217.014 kJ
+

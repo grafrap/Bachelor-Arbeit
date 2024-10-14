@@ -1,0 +1,112 @@
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+WARNING: You are trying to enable block sparse multithreading, but you have started Julia with only a single thread. You can start Julia with `N` threads with `julia -t N`, and check the number of threads Julia can use with `Threads.nthreads()`. Your system has 72 threads available to use, which you can determine by running `Sys.CPU_THREADS`.
+
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=58.769
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=48.817
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=48.775
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=47.937
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=49.104
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=48.673
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=48.336
+After sweep 1 energy=29770.775175216582  maxlinkdim=20 maxerr=3.50E-02 time=47.146
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=4.044
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.778
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.895
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.888
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.871
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.896
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.888
+After sweep 2 energy=26518.04704316595  maxlinkdim=50 maxerr=1.81E-03 time=3.887
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 3 energy=26000.070930485963  maxlinkdim=100 maxerr=4.89E-04 time=4.934
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 4 energy=21066.828934237936  maxlinkdim=100 maxerr=2.51E-03 time=5.722
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 5 energy=16850.17828558165  maxlinkdim=200 maxerr=8.36E-04 time=7.699
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=19.107
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=10.317
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=10.805
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=12.172
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=11.873
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=12.322
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=10.978
+After sweep 1 energy=16759.30649136009  maxlinkdim=300 maxerr=2.63E-04 time=10.776
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.217
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.296
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.288
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.300
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.291
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.312
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.303
+After sweep 1 energy=16722.227492031114  maxlinkdim=800 maxerr=6.10E-06 time=29.286
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.234
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.400
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=64.822
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.380
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.319
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.421
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.362
+After sweep 1 energy=16719.111552324055  maxlinkdim=1300 maxerr=1.84E-06 time=65.343
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.718
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.830
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.949
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.945
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.829
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=101.081
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.829
+After sweep 1 energy=16716.266879811  maxlinkdim=1800 maxerr=9.35E-07 time=100.369
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.554
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.528
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.620
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.647
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.293
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.793
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.208
+After sweep 1 energy=16713.691927358028  maxlinkdim=2299 maxerr=3.52E-07 time=123.020
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=150.152
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=150.257
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=150.371
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=149.841
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=149.976
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=150.497
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=149.908
+After sweep 1 energy=16711.275238967428  maxlinkdim=2800 maxerr=1.52E-07 time=150.120
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=168.688
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=169.294
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=169.771
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=169.824
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=169.701
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=168.864
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=169.773
+After sweep 1 energy=16709.090540551893  maxlinkdim=3300 maxerr=6.81E-08 time=169.395
