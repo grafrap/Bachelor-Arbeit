@@ -15,6 +15,8 @@ using Strided
 using Dates
 using Random
 using HDF5
+using InteractiveUtils
+
 
 BLAS.set_num_threads(1)
 
@@ -226,8 +228,52 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
 
   # Create the MPO
   # H = MPO(ampo, sites)
+  # println(stderr, ampo)
 
   return ampo
+end
+
+# function hascommoninds(::typeof(siteinds), A::AbstractMPS, B::AbstractMPS)
+#   N = length(A)
+#   for n in 1:N
+#     !hascommoninds(siteinds(A, n), siteinds(B, n)) && return false
+#   end
+#   return true
+# end
+
+function check_hascommoninds(::typeof(siteinds), A::AbstractMPS, B::AbstractMPS)
+  N = length(A)
+  if length(B) ≠ N
+    throw(
+      DimensionMismatch(
+        "$(typeof(A)) and $(typeof(B)) have mismatched lengths $N and $(length(B))."
+      ),
+    )
+  end
+  for n in 1:N
+    !hascommoninds(siteinds(A, n), siteinds(B, n)) && error(
+      "$(typeof(A)) A and $(typeof(B)) B must share site indices. On site $n, A has site indices $(siteinds(A, n)) while B has site indices $(siteinds(B, n)).",
+    )
+  end
+  return nothing
+end
+
+# parallel DMRG function for excited states
+function dmrg(H::MPISumTerm{ProjMPO}, Ms::Vector{MPS}, psi0::MPS, sweeps::Sweeps; weight = true, kwargs...)
+  check_hascommoninds(siteinds, H.term.H, psi0)
+  check_hascommoninds(siteinds, H.term.H, psi0')
+  for M in Ms
+    check_hascommoninds(siteinds, M, psi0)
+  end
+  H = permute(H.term.H, (linkind, siteinds, linkind))
+  Ms = permute.(Ms, Ref((linkind, siteinds, linkind)))
+  if weight <= 0
+    error(
+      "weight parameter should be > 0.0 in call to excited-state dmrg (value passed was weight=$weight)",
+    )
+  end
+  PMM = ITensorMPS.ProjMPO_MPS(H, Ms; weight)
+  return ITensorMPS.dmrg(MPISumTerm(PMM, MPI.COMM_WORLD), psi0, sweeps; kwargs...)
 end
 
 
@@ -241,12 +287,28 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   sweeps0 = Sweeps(5)
   maxdim!(sweeps0, 20,50,100,100,200)
   cutoff!(sweeps0, 1E-5,1E-5,1E-5,1E-8,1E-8)
+  
+  # debug prints
+  # if rank == 0
+  #   println(stderr, "\n\nH:")
+  #   println(stderr, typeof(H))
+  #   println(stderr, H)
+  #   println(stderr, "\n\n")
+  #   println(stderr, H.term)
+  #   println(stderr, "\n\n")
+  # end
 
   if ψn===nothing 
     #ground state
-    Ed,ψd = dmrg(H,ψi,sweeps0)
+    # if rank == 0
+    #   println("Method signature: ", @which ITensorMPS.dmrg(H, ψi, sweeps0))
+    # end
+    Ed,ψd = ITensorMPS.dmrg(H,ψi,sweeps0)
   else 
     #excited states
+    # if rank == 0
+    #   println("Method signature: ", @which dmrg(H, ψn, ψi, sweeps0; weight=w))
+    # end
     Ed,ψd = dmrg(H,ψn,ψi,sweeps0;weight=w)
   end
   S2d = inner(ψd',S2,ψd)
@@ -257,19 +319,28 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   maxdim!(sweep1, maxdimi)
   cutoff!(sweep1, cutoff)
 
+  # variables for loops
   j = 0
   E,ψ = Ed,ψd
   maxdim = maxdimi
+
+  # variables for convergence
   E_conv, S2_conv, Szi_conv = 0, 0, 0
   while true
-    if ψn===nothing #ground state
-      Ee,ψe = dmrg(H,ψd,sweep1)
-    else #excited states
+
+    if ψn===nothing 
+      #ground state
+      Ee,ψe = ITensorMPS.dmrg(H,ψd,sweep1)
+    else
+      #excited states
       Ee,ψe = dmrg(H,ψn,ψd,sweep1;weight=w)
     end
+
+    # create the inner products
     S2e = inner(ψe',S2,ψe)
     Szie = [inner(ψe',Szi[i],ψe) for i in eachindex(Szi)]
     
+    # check convergence
     if abs(Ed-Ee) < precE
       E_conv += 1
     else
@@ -303,6 +374,7 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
       end
     end
 
+    # check if all converged and stop if so
     if abs(Ed-Ee) < precE && 
       maximum(abs.(Szid-Szie)) < precSzi
       j += 1
@@ -315,6 +387,7 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
       break
     end
 
+    # update variables
     Ed,ψd = Ee,ψe
     S2d = S2e
     Szid = Szie
@@ -323,20 +396,29 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
     maxdim!(sweep1, maxdim)
   end
 
-  return(E,ψ)
+  return E,ψ
 end
 
 
 # main #
 function main()
+
+# start time
 start_time = DateTime(now())
+
+# Set the number of threads to 1, to use all cores as MPI processes
 BLAS.set_num_threads(1)
 NDTensors.Strided.disable_threads()
-ITensors.enable_threaded_blocksparse(true)
 
+# For now, disable threaded blocksparse
+ITensors.enable_threaded_blocksparse(false)
+# ITensors.enable_threaded_blocksparse(true)
+
+# Get all needed MPI information
 rank = MPI.Comm_rank(MPI.COMM_WORLD)
 nprocs = MPI.Comm_size(MPI.COMM_WORLD)
-# Check if the correct number of arguments is provided
+
+# Get setup, only rank 0 will do this
 if rank == 0
 
   # Check if the correct number of arguments is provided
@@ -397,8 +479,13 @@ if rank == 0
   
   # Hamiltonian
   H = Hamiltonian(N, sites, J=J)
+
+  # Partition the Hamiltonian for parallel DMRG
   Hpart = partition(H, nprocs)
+
 else
+  # empty variables for other processes
+
   sites = nothing
   ψi = nothing
   S2 = nothing
@@ -411,44 +498,55 @@ else
   print_HDF5 = nothing
 end
 
-sites = bcast(sites, 0, MPI.COMM_WORLD)
-ψi = bcast(ψi, 0, MPI.COMM_WORLD)
-S2 = bcast(S2, 0, MPI.COMM_WORLD)
-Szi = bcast(Szi, 0, MPI.COMM_WORLD)
-Sz = bcast(Sz, 0, MPI.COMM_WORLD)
-H = bcast(H, 0, MPI.COMM_WORLD)
-Hpart = bcast(Hpart, 0, MPI.COMM_WORLD)
-nexc = bcast(nexc, 0, MPI.COMM_WORLD)
-Nsites = bcast(Nsites, 0, MPI.COMM_WORLD)
-print_HDF5 = bcast(print_HDF5, 0, MPI.COMM_WORLD)
+# Broadcast the variables from rank 0 to all processes
+sites = ITensorParallel.bcast(sites, 0, MPI.COMM_WORLD)
+ψi = ITensorParallel.bcast(ψi, 0, MPI.COMM_WORLD)
+S2 = ITensorParallel.bcast(S2, 0, MPI.COMM_WORLD)
+Szi = ITensorParallel.bcast(Szi, 0, MPI.COMM_WORLD)
+Sz = ITensorParallel.bcast(Sz, 0, MPI.COMM_WORLD)
+H = ITensorParallel.bcast(H, 0, MPI.COMM_WORLD)
+Hpart = ITensorParallel.bcast(Hpart, 0, MPI.COMM_WORLD)
+nexc = ITensorParallel.bcast(nexc, 0, MPI.COMM_WORLD)
+Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
+print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
 
+# DMRG precision parameters
 precE = 1E-6
 precS2 = 1E-5
 precSzi = 1E-5
 w = 1E5 # penalty for non-orthogonality
 
+# sum term for parallel DMRG
 MPI.Barrier(MPI.COMM_WORLD)
 mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
 MPI.Barrier(MPI.COMM_WORLD)
 
+# copy of the initial mpo
+mpo_sum_term_copy = mpo_sum_term
+
 # ground state
 E0, ψ0 = DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
 
+# save ground state
 En = [E0]
 ψn = [ψ0]
 
-
-# if nexc != 0 
-#   H = MPO(mpo_sum_term, sites)
+# if rank == 0
+#   # println(stderr, "mpo_sum_term")
+#   # println(stderr, mpo_sum_term)
+#   println(stderr, "mpo_sum_term_copy")
+#   println(stderr, mpo_sum_term_copy)
 # end
 
-# # excited states
-# for i in 1:nexc
-#   # TODO: This function is not callable in parallel context
-#   E,ψ = DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi,ψn=ψn,w=w)
-#   push!(En,E)
-#   push!(ψn,ψ)
-# end
+# excited states
+for _ in 1:nexc
+  MPI.Barrier(MPI.COMM_WORLD)
+  mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
+  MPI.Barrier(MPI.COMM_WORLD)
+  E,ψ = DMRGmaxdim_convES2Szi(mpo_sum_term,ψi,precE,precS2,precSzi,S2,Szi,ψn=ψn,w=w)
+  push!(En,E)
+  push!(ψn,ψ)
+end
 
 if rank == 0
   # <ψn|S²|ψn>
@@ -457,6 +555,8 @@ if rank == 0
   # <ψn|Sz(i)|ψn>
   Szin = [[inner(ψn[i]',Szi[j],ψn[i]) for j in 1:Nsites] for i in eachindex(ψn)]
   
+  time = Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now()) - Dates.DateTime(start_time)))
+
   fw = open("Szi_Sz_pll=$(Sz).txt", "w")
   # outputs
   write(fw, "List of E:\n")
@@ -468,11 +568,10 @@ if rank == 0
   write(fw, "List of Sz(i):\n")
   write(fw, string(Szin), "\n")
   write(fw, "----------\n\n")
-  write(fw,"total time = "*
-  string( Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now())
-  - Dates.DateTime(start_time))) ) * "\n")
-  
+  write(fw,"total time = "* string(time) * "\n")
   close(fw)
+
+  @show time
   
   if print_HDF5
   

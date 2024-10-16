@@ -3,6 +3,8 @@ using ITensorMPS
 using Dates
 using Random
 using HDF5
+using InteractiveUtils
+
 
 # run this script with: julia DMRG_template.jl 0.5 10 23 38 1 0 true true
 # functions #
@@ -184,7 +186,7 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
     end
   end
 
-  println(ampo)
+  # println(ampo)
   # Create the MPO
   H = MPO(ampo, sites)
 
@@ -388,8 +390,6 @@ write(fw,"total time = "*
     - Dates.DateTime(start_time))) ) * "\n")
 
 close(fw)
-println(ψn)
-@show ψn
 
 if print_HDF5
   println("Printing to HDF5 file")
