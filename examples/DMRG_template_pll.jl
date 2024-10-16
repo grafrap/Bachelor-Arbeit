@@ -25,7 +25,8 @@ BLAS.set_num_threads(1)
 # import .Operators
 # import .AuxFunctions
 # import .DMRGsweeps
-# run this script with: julia DMRG_template.jl 0.5 10 23 38 1 0 true true
+# run this script with: mpiexecjl -n 4 julia DMRG_template_pll.jl 0.5 10 0.4 0 1 true true > output.txt
+
 # functions #
 
 function bcast(obj, root::Integer, comm::MPI.Comm)
@@ -98,7 +99,7 @@ function spinstate_sNSz(s,N,Sz;random="yes")
     end
     # example output: ["Z0", "Dn", "Up", "Up", "Dn", "Up", "Up", "Up", "Dn", "Dn"] for s = 1, Sz = 1, N = 10
   else
-    println("ERROR: as of now, only s=1/2 and s=1 are possible")
+    println(stderr, "ERROR: as of now, only s=1/2 and s=1 are possible")
     exit()
   end
 
@@ -235,7 +236,7 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
   #=
      DMRG sweeps (maxdim routine) until convergence in E, S^2 and Sz(i)
   =#
-
+  rank = MPI.Comm_rank(MPI.COMM_WORLD)
   # default sweeps
   sweeps0 = Sweeps(5)
   maxdim!(sweeps0, 20,50,100,100,200)
@@ -269,14 +270,15 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
     S2e = inner(ψe',S2,ψe)
     Szie = [inner(ψe',Szi[i],ψe) for i in eachindex(Szi)]
     
-    # Convergence checks, TODO: change to two times in a row converged or so
     if abs(Ed-Ee) < precE
       E_conv += 1
     else
       E_conv = 0
     end
     if E_conv == 2
-      println("E converged")
+      if rank == 0
+        println(stderr, "E converged")
+      end
     end
 
     if abs(S2d-S2e) < precS2
@@ -285,7 +287,9 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
       S2_conv = 0
     end
     if S2_conv == 2
-      println("S² converged")
+      if rank == 0
+        println(stderr, "S² converged")
+      end
     end
 
     if maximum(abs.(Szid-Szie)) < precSzi
@@ -294,7 +298,9 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
       Szi_conv = 0
     end
     if Szi_conv == 2 
-      println("Sz(i) converged")
+      if rank == 0
+        println(stderr, "Sz(i) converged")
+      end
     end
 
     if abs(Ed-Ee) < precE && 
@@ -321,26 +327,6 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
 end
 
 
-function write_simple_hdf5()
-  # Open an HDF5 file for writing
-  h5file = h5open("test.h5", "w")
-
-  try
-      # Create a group within the HDF5 file
-      group = create_group(h5file, "my_group")
-
-      # Write a simple dataset to the group
-      write(group, "test_dataset", [1, 2, 3, 4, 5])
-  catch e
-      println("Error writing to HDF5 file: ", e)
-  finally
-      # Ensure the HDF5 file is closed
-      close(h5file)
-  end
-end
-
-
-
 # main #
 function main()
 start_time = DateTime(now())
@@ -352,9 +338,10 @@ rank = MPI.Comm_rank(MPI.COMM_WORLD)
 nprocs = MPI.Comm_size(MPI.COMM_WORLD)
 # Check if the correct number of arguments is provided
 if rank == 0
-  write_simple_hdf5()
+
+  # Check if the correct number of arguments is provided
   if length(ARGS) < 7
-    println("Usage: julia DMRG_template.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5>")
+    println(stderr, "Usage: julia DMRG_template.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5>")
     exit(1)
   end
 
@@ -371,7 +358,7 @@ if rank == 0
   end
   
   # other parameters
-  Sz = parse(Float64, ARGS[4]) # Sz = 1/2 or 0
+  Sz = parse(Float64, ARGS[4]) # Sz = 1/2 or 0 for now
   @assert Sz == 1/2 || Sz == 0 "Sz must be 1/2 or 0"
   nexc = parse(Int, ARGS[5])
   
@@ -388,7 +375,6 @@ if rank == 0
     throw(ArgumentError("Failed to parse print_HDF5 as Bool: $e"))
   end
 
-
   
   # system
   Nsites = N
@@ -400,10 +386,8 @@ if rank == 0
   
   # initial state
   statei = spinstate_sNSz(s, N, Sz)
-  # println(statei)
   linkdim = 100 # variable to randomize initial MPS
   ψi = randomMPS(sites, statei, linkdim)
-  # print(ψi)
   
   # S² operator
   S2 = S2_op(Nsites, sites)
@@ -448,16 +432,16 @@ mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
 MPI.Barrier(MPI.COMM_WORLD)
 
 # ground state
-# E0, ψ0 = DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
+E0, ψ0 = DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
 
-# En = [E0]
-# ψn = [ψ0]
-ψn = [ψi]
-En = []
+En = [E0]
+ψn = [ψ0]
+
 
 # if nexc != 0 
 #   H = MPO(mpo_sum_term, sites)
 # end
+
 # # excited states
 # for i in 1:nexc
 #   # TODO: This function is not callable in parallel context
@@ -465,14 +449,14 @@ En = []
 #   push!(En,E)
 #   push!(ψn,ψ)
 # end
-MPI.Finalize()
+
 if rank == 0
   # <ψn|S²|ψn>
   S2n = [inner(ψn[i]',S2,ψn[i]) for i in eachindex(ψn)]
-
+  
   # <ψn|Sz(i)|ψn>
   Szin = [[inner(ψn[i]',Szi[j],ψn[i]) for j in 1:Nsites] for i in eachindex(ψn)]
-
+  
   fw = open("Szi_Sz_pll=$(Sz).txt", "w")
   # outputs
   write(fw, "List of E:\n")
@@ -485,36 +469,30 @@ if rank == 0
   write(fw, string(Szin), "\n")
   write(fw, "----------\n\n")
   write(fw,"total time = "*
-      string( Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now())
-      - Dates.DateTime(start_time))) ) * "\n")
-
-  close(fw)
-println(ψn) # print MPS for external print to HDF5 file
-
-
-# if rank == 0
-# # Write the MPS data to the HDF5 file
-# h5file = h5open("test.h5", "w")
-# write(h5file, "test_dataset", [1, 2, 3, 4, 5])
-# close(h5file)
-#   if print_HDF5
-#     println("Printing to HDF5 file")
-
-#     # Open an HDF5 file for writing
-#     h5file = h5open("psin_data.h5", "w")
-
-#     # Write the MPS data to the HDF5 file
-#     for (i, psi) in enumerate(ψn)
-#       group = create_group(h5file, "state_$i")
-#       write(group, "ψ", psi)
-#     end
-
-#     # Close the HDF5 file
-#     close(h5file)
-#   end
+  string( Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now())
+  - Dates.DateTime(start_time))) ) * "\n")
   
-# end
+  close(fw)
+  
+  if print_HDF5
+  
+    println(stderr, "Printing to HDF5 file")
+
+    # Open an HDF5 file for writing
+    h5file = h5open("psin_data.h5", "w")
+    
+    # Write the MPS data to the HDF5 file
+    for (i, psi) in enumerate(ψn)
+      group = create_group(h5file, "state_$i")
+      write(group, "ψ", psi)
+    end
+    
+    # Close the HDF5 file
+    close(h5file) 
+  end
+
 end
 end
 
 main()
+MPI.Finalize()

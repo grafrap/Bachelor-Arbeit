@@ -158,9 +158,9 @@ function Hamiltonian(N::Int, sites; g::Vector = zeros(N), D::Vector = zeros(N),
   for i in 1:N-1
     for j in i+1:N
       if J[i,j] != 0.0
-        ampo += J[i,j], "Sx", i, "Sx", j
-        ampo += J[i,j], "Sy", i, "Sy", j
         ampo += J[i,j], "Sz", i, "Sz", j
+        ampo += J[i,j]/2, "S+", i, "S-", j
+        ampo += J[i,j]/2, "S-", i, "S+", j
       end
     end
   end
@@ -388,7 +388,8 @@ write(fw,"total time = "*
     - Dates.DateTime(start_time))) ) * "\n")
 
 close(fw)
-
+println(ψn)
+@show ψn
 
 if print_HDF5
   println("Printing to HDF5 file")
