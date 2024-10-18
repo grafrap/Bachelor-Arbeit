@@ -170,9 +170,31 @@ if rank == 0
   
   # Sz(i) operator
   Szi = [Operators.Szi_op(i, sites) for i in 1:Nsites]
+
+  # Identity operator
+  I = Operators.Identity_op(Nsites, sites)
+
+  # Print the operators to HDF5 file
+  if print_HDF5
+    h5file = h5open("outputs/operators_data.h5", "w")
+    write(h5file, "S2", S2)
+    group = create_group(h5file, "Sz")
+    for i in 1:Nsites
+      write(group, "Sz_$i", Szi[i])
+    end
+    write(h5file, "I", I)
+    close(h5file)
+  end
   
   # Hamiltonian
   H = Hamiltonian.H(N, sites, J=J)
+
+  # Print the Hamiltonian to HDF5 file
+  if print_HDF5
+    h5file = h5open("outputs/H_data.h5", "w")
+    write(h5file, "H", MPO(H, sites))
+    close(h5file)
+  end
 
   # Partition the Hamiltonian for parallel DMRG
   Hpart = partition(H, nprocs)

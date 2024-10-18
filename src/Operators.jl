@@ -41,4 +41,20 @@ module Operators
 
     return Szi
   end
+  
+  function Identity_op(Nsites, sites)
+    #=
+      Identity operator
+    =#
+  
+    ampo = AutoMPO()
+  
+    for i in 1:Nsites
+      ampo += 1., "I", i
+    end
+  
+    I = MPO(ampo, sites)
+  
+    return I
+  end
 end
