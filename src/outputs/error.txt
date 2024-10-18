@@ -50,3 +50,12 @@
 │   mpiexec = "mpiexec"
 │   preloads = Any[]
 └   preloads_env_switch = nothing
+┌ Warning: MPS center bond dimension is less than requested (you requested 100, but in practice it is 32. This is likely due to technicalities of truncating quantum number sectors.
+└ @ ITensors.ITensorMPS ~/.julia/packages/ITensors/4M2ep/src/ITensorMPS/mps.jl:153
+E converged
+S² converged
+Sz(i) converged
+E converged
+S² converged
+Sz(i) converged
+Printing to HDF5 file
