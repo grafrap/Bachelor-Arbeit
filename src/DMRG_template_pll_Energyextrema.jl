@@ -130,17 +130,17 @@ if rank == 0
   # create the J matrix, with J1 on the off-diagonal TODO: generalize for all J matrices
   J = zeros(N,N)
   for i in 1:N-1
-    J[i,i+1] = J1 #+ (-1)^i * 0.03 * J1
+    J[i,i+1] = J1 + (-1)^i * 0.03 * J1
     J[i+1,i] = J1
-    # if i != N-1
-    #   J[i,i+2] = 0.19 *J1
-    #   J[i+2,i] = 0.19 *J1
-    # end
+    if i != N-1
+      J[i,i+2] = 0.19 *J1
+      J[i+2,i] = 0.19 *J1
+    end
   end
   
   # other parameters
   Sz = parse(Float64, ARGS[4]) # Sz = 1/2 or 0 for now
-  @assert Sz == 1/2 || Sz == 0 "Sz must be 1/2 or 0"
+  @assert Sz == 1/2 || Sz == 0 || Sz == 1 "Sz must be 1/2 or 0"
   nexc = parse(Int, ARGS[5])
   
   conserve_symmetry, print_HDF5 = true, true

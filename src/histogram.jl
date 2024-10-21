@@ -6,9 +6,12 @@ using Printf
 function read_file_as_matrix(file_path)
     matrix = []
     open(file_path, "r") do file
-        for line in eachline(file)
+      content = strip(read(file, String), ['[', ']'])
+      content = replace(content, ']' => "")
+      rows = split(content, ';')
+        for row in rows
             # Remove any trailing semicolon and whitespace, then split by spaces
-            float_values = split(strip(replace(line, ";" => "")))
+            float_values = split(strip(row))
             # Convert each value to float and append to the matrix
             push!(matrix, parse.(Float64, float_values))
         end
@@ -17,18 +20,27 @@ function read_file_as_matrix(file_path)
 end
 
 # Example usage
-file_path = "chi.txt"
+file_path = "outputs/chi_values.txt"
 matrix = read_file_as_matrix(file_path)
 println(matrix)
 
 
 # Normalize each column by subtracting the min and divide by the max
-for row in 1:size(matrix, 1)
-  min = minimum(matrix[row, :])
-  matrix[row, :] .= matrix[row, :] .- min
-  max = maximum(matrix[row, :])
-  matrix[row, :] .= matrix[row, :] ./ max
+for col in 1:size(matrix, 2)
+  min = minimum(matrix[:, col])
+  matrix[:, col] .= matrix[:, col] .- min
+  max = maximum(matrix[:, col])
+  matrix[:, col] .= matrix[:, col] ./ max
 end
+
+# for row in 1:size(matrix, 1)
+#   min = minimum(matrix[row, :])
+#   matrix[row, :] .= matrix[row, :] .- min
+#   max = maximum(matrix[row, :])
+#   matrix[row, :] .= matrix[row, :] ./ max
+# end
+
+
 
 for row in eachrow(matrix)
   for val in row
