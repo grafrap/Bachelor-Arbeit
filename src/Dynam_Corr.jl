@@ -3,6 +3,7 @@ using ITensorMPS
 using HDF5
 using InteractiveUtils
 using LinearAlgebra
+using Base.Threads
 
 function Jackson_dampening(N::Int)
   #=
@@ -25,6 +26,7 @@ function Chebyshev_vectors(B::MPO, H::MPO, ψ::MPS, N::Int)
   t[2] = apply(H, t[1])
 
   for n in 3:N+1
+    println("Calculating Chebyshev vector $n")
     t[n] = 2*apply(H, t[n-1]) - t[n-2]
   end
 
@@ -59,11 +61,9 @@ function Chebyshev_expansion(x::Float64, N::Int)
   return T
 end
   
-
-
-function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω, N::Int)
+function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω::Float64, N::Int)
   #=
-    Implements the dynamical spin correlator
+    Implements the dynamical spin correlator for a single frequency
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
     where δ is the Dirac delta function, ψ the ground state MPS, Â the operator A[i], and Ĥ the Hamiltonian.
   =#
@@ -95,6 +95,50 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
   T = Chebyshev_expansion(ω_, N)
   
   χ = 1/(a * π * sqrt(1 - ω_^2)) * (g[1] * μ[1] + 2 * sum([g[n]*μ[n]*T[n] for n in 2:N+1]))
+  return χ
+end
+
+
+function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω::Vector, N::Int)
+  #=
+    Implements the dynamical spin correlator for a vector of frequencies
+    χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
+    where δ is the Dirac delta function, ψ the ground state MPS, Â the operator A[i], and Ĥ the Hamiltonian.
+  =#
+
+  ϵ = 0.025
+  W = -E0 - E1 # W* = -E0 + E1
+  for i in 1:length(ω)
+    @assert ω[i] < W "ω must be less than W"
+    @assert ω[i] > 0 "ω must be positive"
+  end
+
+  W_ = 1 - 0.5*ϵ # W', scaled W
+  a = W/(2*W_)
+  H_scaled = 1/a * (H - E0*I) - W_*I
+
+  #calculate the Jackson dampening factors
+  println("Calculating Jackson dampening factors")
+  g = Jackson_dampening(N)
+
+  # calculate the Chebyshev vectors
+  println("Calculating Chebyshev vectors")
+  t = Chebyshev_vectors(A, H_scaled, ψ, N)
+
+  # calculate the Chebyshev moments
+  println("Calculating Chebyshev moments")
+  μ = Chebyshev_moments(ψ, A, t)
+
+  # calculate the Chebyshev expansion of the scaled ω
+  χ = zeros(length(ω))
+  
+  println("Calculating Chebyshev expansion")
+  for j in eachindex(ω)
+    ω_ = ω[j]/a - W_ # ω', scaled ω
+    T = Chebyshev_expansion(ω_, N)
+    χ[j] = 1/(a * π * sqrt(1 - ω_^2)) * (g[1] * μ[1] + 2 * sum([g[n]*μ[n]*T[n] for n in 2:N+1]))
+  end
+  println(χ)
   return χ
 end
 
@@ -134,23 +178,21 @@ end
 close(f)
 
 # calculate the dynamical correlator
-ω = 0.1 # make a linspace between 0 and 2 here
+len_ω = 41
+ω = collect(range(0, 2, len_ω))[2:end]
 i = 1
-N = 30
-χ = Zeros(18, 20)
+N = 15
+χ = zeros(length(Sz), len_ω-1)
 # TODO: test with results from the paper: formula 9 and fig 5
 # Take J = 1, J2 = 0.19J, ΔJ = 0.03J, N_sites = 18, S = 1, Sz = 1
 # mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 1 18 1.0 0 0 true true > outputs/output.txt 2> outputs/error.txt
-for ω in range(0, 2, 20)
-  j = Int(ω*10)
-  for i in 1:18
-    χ[i, j] = Dynamic_corrolator(ψ0, H, Sz[i], I, E0, E1, ω, N)
-    println("χ(ω = $ω) = $χ")
-  end
+@threads for i in eachindex(Sz)
+  println("Calculating χ for Sz[$i]")
+  χ[i, :] = Dynamic_corrolator(ψ0, H, Sz[i], I, E0, E1, ω, N)
 end
 # χ = Dynamic_corrolator(ψ0, H, Sz[i], I, E0, E1, ω, N)
 # println("χ(ω = $ω) = $χ")
-
+println(χ)
 end
 
 main()
