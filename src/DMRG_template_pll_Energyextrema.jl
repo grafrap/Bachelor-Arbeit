@@ -130,12 +130,12 @@ if rank == 0
   # create the J matrix, with J1 on the off-diagonal TODO: generalize for all J matrices
   J = zeros(N,N)
   for i in 1:N-1
-    J[i,i+1] = J1 + (-1)^i * 0.03 * J1
+    J[i,i+1] = J1 #+ (-1)^i * 0.03 * J1
     J[i+1,i] = J1
-    if i != N-1
-      J[i,i+2] = 0.19 *J1
-      J[i+2,i] = 0.19 *J1
-    end
+    # if i != N-1
+    #   J[i,i+2] = 0.19 *J1
+    #   J[i+2,i] = 0.19 *J1
+    # end
   end
   
   # other parameters
