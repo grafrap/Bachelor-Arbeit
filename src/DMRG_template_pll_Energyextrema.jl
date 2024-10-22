@@ -232,9 +232,9 @@ Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
 print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
 
 # DMRG precision parameters
-precE = 1E-6
-precS2 = 1E-5
-precSzi = 1E-5
+precE = 1E-8
+precS2 = 1E-8
+precSzi = 1E-8
 w = 1E5 # penalty for non-orthogonality
 
 # sum term for parallel DMRG

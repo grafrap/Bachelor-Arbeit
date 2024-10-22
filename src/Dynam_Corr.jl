@@ -134,7 +134,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
 end
 
 
-function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3, abstol::Float64=5e-4)
+function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3, abstol::Float64=1e-6)
   #=
     Implements the dynamical spin correlator for a vector of frequencies
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
@@ -143,6 +143,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
   if N_min < 5
     N_min = 5
   end
+  N_max = 40
 
   ϵ = 0.025
   W = -E0 - E1 # W* = -E0 + E1
@@ -176,7 +177,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
   T = Chebyshev_expansion(ω_, N_min)
 
   prefactor = 1 ./(a * π * sqrt.(1 .- ω_.^2))
-  sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min+1]), dims=2)
+  sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min]), dims=2)
   χ = prefactor .* (g[1] * μ[1] .+ 2 .* sumval)
 
   while true 
@@ -186,18 +187,17 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
 
     push!(t, t_next)
     push!(μ, inner(ψ', A, t[end]))
-    T = hcat(T, @. 2*ω_*T[:, end] - T[:, end-1])
-    sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min+1]), dims=2)
-    χ_next = prefactor .* (g[1] * μ[1] .+ 2 .* sumval)
-    error = maximum(abs.(χ_next .- χ))
-    # get the index of the maximum
-    # println(stderr, abs.(χ_next .- χ))
+    T = hcat(T, 2*ω_.*T[:, end] .- T[:, end-1])
 
+    sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min]), dims=2)
+    χ_next = prefactor .* (g[1] .* μ[1] .+ 2 .* sumval)
+
+    error = maximum(abs.(χ_next .- χ))
     println(stderr, "Error = $error")
-    if error < abstol
+    χ = χ_next
+    if error < abstol || N_min > N_max
       break
     end
-    # χ = χ_next
   end
       
   println(stderr, χ)
@@ -240,8 +240,8 @@ end
 close(f)
 
 # calculate the dynamical correlator
-len_ω = 41
-ω = collect(range(0.5, 1.5, len_ω))[2:end]
+len_ω = 101
+ω = collect(range(0.65, 0.75, len_ω))[2:end]
 i = 1
 N_min = 3
 χ = zeros(length(Sz), len_ω-1)
