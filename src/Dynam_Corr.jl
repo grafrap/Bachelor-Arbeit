@@ -5,6 +5,10 @@ using InteractiveUtils
 using LinearAlgebra
 # using Base.Threads
 
+lib_dir = "."
+include(lib_dir*"/Operators.jl")
+import .Operators
+
 function Jackson_dampening(N::Int)
   #=
     Implements the Jackson dampening factors g_n
@@ -237,16 +241,21 @@ energy_array = eval(Meta.parse(lines[energy_line]))
 E0 = energy_array[1]
 E1 = energy_array[2]
 
-# read in the Sz(i)
+# # read in the Sz(i)
+# f = h5open("outputs/operators_data.h5", "r")
+# # S2 = read(f, "S2", MPO)
+# I = read(f, "I", MPO)
+# Sz::Vector{MPO} = []
+# group = f["Sz"]
+# for i in 1:N
+#   push!(Sz, read(group, "Sz_$i", MPO))
+# end
+# close(f)
 f = h5open("outputs/operators_data.h5", "r")
-# S2 = read(f, "S2", MPO)
-I = read(f, "I", MPO)
-Sz::Vector{MPO} = []
-group = f["Sz"]
-for i in 1:N
-  push!(Sz, read(group, "Sz_$i", MPO))
-end
-close(f)
+sites = read(f, "sites", IndexSet)
+I = Operators.Identity_op(sites)
+Sz = [Operators.Szi_op(i, sites) for i in 1:N]
+
 
 # for i in 1:N
 
@@ -257,7 +266,7 @@ close(f)
 # calculate the dynamical correlator
 len_ω = 1000
 W = -E0 - E1
-ω = collect(range(0.005, 2, len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+ω = collect(range(0.005, 20, len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 i = 1
 N_min = 3
 χ = zeros(length(Sz), len_ω)
