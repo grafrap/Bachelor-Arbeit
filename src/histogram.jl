@@ -50,7 +50,7 @@ for row in eachrow(matrix)
 end
 
 # Step 4: Use the heatmap function to create the 2D histogram
-heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix")
+heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix", size=(800, 600), margin=10Plots.mm, color=:viridis)
 
 # Save the plot to a file
 savefig("2d_histogram.png")

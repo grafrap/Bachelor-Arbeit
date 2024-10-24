@@ -131,7 +131,7 @@ if rank == 0
   J = zeros(N,N)
   for i in 1:N-1
     J[i,i+1] = J1 + (-1)^i * 0.03 * J1
-    J[i+1,i] = J1
+    J[i+1,i] = J1 + (-1)^i * 0.03 * J1
     if i != N-1
       J[i,i+2] = 0.19 *J1
       J[i+2,i] = 0.19 *J1
@@ -140,7 +140,7 @@ if rank == 0
   
   # other parameters
   Sz = parse(Float64, ARGS[4]) # Sz = 1/2 or 0 for now
-  @assert Sz == 1/2 || Sz == 0 || Sz == 1 "Sz must be 1/2 or 0"
+  # @assert Sz == 1/2 || Sz == 0 || Sz == 1 "Sz must be 1/2 or 0"
   nexc = parse(Int, ARGS[5])
   
   conserve_symmetry, print_HDF5 = true, true
@@ -157,6 +157,7 @@ if rank == 0
   end
 
   
+  # TODO: check if there are more symmetry conservation options
   # system
   Nsites = N
   if (2*s)%2 == 0
@@ -177,11 +178,14 @@ if rank == 0
   Szi = [Operators.Szi_op(i, sites) for i in 1:Nsites]
 
   # Identity operator
-  I = Operators.Identity_op(Nsites, sites)
+  I = Operators.Identity_op(sites)
+  # TODO: write the sites to HDF5 and not the operators
+  show(sites)
 
   # Print the operators to HDF5 file
   if print_HDF5
     h5file = h5open("outputs/operators_data.h5", "w")
+    write(h5file, "sites", sites)
     write(h5file, "S2", S2)
     group = create_group(h5file, "Sz")
     for i in 1:Nsites
@@ -232,9 +236,9 @@ Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
 print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
 
 # DMRG precision parameters
-precE = 1E-8
-precS2 = 1E-8
-precSzi = 1E-8
+precE = 1E-6
+precS2 = 1E-6
+precSzi = 1E-6
 w = 1E5 # penalty for non-orthogonality
 
 # sum term for parallel DMRG
