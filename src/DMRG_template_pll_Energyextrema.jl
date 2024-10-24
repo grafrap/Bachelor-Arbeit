@@ -180,7 +180,7 @@ if rank == 0
   # Identity operator
   I = Operators.Identity_op(sites)
   # TODO: write the sites to HDF5 and not the operators
-  show(sites)
+  # show(sites)
 
   # Print the operators to HDF5 file
   if print_HDF5
