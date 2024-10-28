@@ -2,6 +2,7 @@
 ###############################################################################
 # packages #
 ###############################################################################
+# src/DMRG_template_pll.jl
 using MPIPreferences
 MPIPreferences.use_system_binary()
 using MPI: MPI
@@ -28,9 +29,16 @@ include(lib_dir*"/Customspace.jl")
 import .Operators
 import .Hamiltonian
 import .DMRGSweeps
-import .Customspace
 # run this script with: mpiexecjl -n 4 julia DMRG_template_pll.jl 0.5 10 0.4 0 1 true true > outputs/output.txt
+function ITensors.op(opname::OpName"Sz", s::Index{Vector{Pair{QN, Int64}}})
+  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
+  return op(opname, SpinSiteType(S))
+end
 
+function ITensors.op(opname::OpName"Sz", s::Index{Rational{Int}})
+  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
+  return op(opname, SpinSiteType(S))
+end
 # functions #
 function spinstate_sNSz(s,N,Sz;random="yes")
   #=
@@ -59,10 +67,10 @@ function spinstate_sNSz(s,N,Sz;random="yes")
 
   s = Rational(s)
   # Get the possible states for the given spin value
-  possible_states = Customspace.generate_spin_states(s)
+  possible_states = generate_spin_states(s)
   state = fill(possible_states[1], N)
   sum = N * -s
-  state_index_map = Customspace.state_to_index(s)
+  state_index_map = state_to_index(s)
 
   # Fill the state array with the correct states
   while sum < Sz
@@ -81,8 +89,6 @@ function spinstate_sNSz(s,N,Sz;random="yes")
         state[i] = current_state
         sum += state_index_map[current_state] - 1
       else
-        println("sum = $sum")
-        println("state_index_map[state[i]] = $(state_index_map[state[i]])")
         # Assign the restvalue to the current index
         state[i] = possible_states[Int(state_index_map[state[i]] + (Sz - sum) + 1)]
         sum += state_index_map[state[i]]-1
@@ -90,13 +96,17 @@ function spinstate_sNSz(s,N,Sz;random="yes")
     end
   end
 
-
   # Shuffle the state array if randomization is requested
   if random == "yes"
     shuffle!(state)
   end
 
-  return state
+  index_vector = Vector{Int}(undef, length(state))
+  for i in eachindex(state)
+    index_vector[i] = state_index_map[state[i]]
+  end
+
+  return index_vector
 end
 
 # main #
@@ -179,6 +189,7 @@ if rank == 0
   ψi = randomMPS(sites, statei; linkdims=linkdim)
   
   # S² operator
+  println(stderr, "sites[1]: ", sites[1])
   S2 = Operators.S2_op(Nsites, sites)
   
   # Sz(i) operator

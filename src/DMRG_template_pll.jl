@@ -78,6 +78,7 @@ function spinstate_sNSz(s,N,Sz;random="yes")
           state[Int(floor(N/2)+ceil(Sz/2))+1] = "Z0"
         end
       end
+    else
       throw(ArgumentError("Check s, N and Sz"))
     end
     # example output: ["Z0", "Dn", "Up", "Up", "Dn", "Up", "Up", "Up", "Dn", "Dn"] for s = 1, Sz = 1, N = 10
@@ -166,6 +167,7 @@ if rank == 0
   ψi = randomMPS(sites, statei, linkdim)
   
   # S² operator
+  println(stderr, "sites[1]: ", sites[1])
   S2 = Operators.S2_op(Nsites, sites)
   
   # Sz(i) operator

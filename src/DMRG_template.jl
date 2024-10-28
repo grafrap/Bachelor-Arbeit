@@ -233,7 +233,6 @@ function DMRGmaxdim_convES2Szi(H,ψi,precE,precS2,precSzi,S2,Szi;maxdimi=300,
     S2e = inner(ψe',S2,ψe)
     Szie = [inner(ψe',Szi[i],ψe) for i in eachindex(Szi)]
     
-    # Convergence checks, TODO: change to two times in a row converged or so
     if abs(Ed-Ee) < precE
       E_conv += 1
     else

@@ -1,6 +1,6 @@
 # src/Customspace.jl
-module Customspace
 using ITensors, ITensorMPS
+using LinearAlgebra
 
 export SpinSiteType
 
@@ -8,7 +8,18 @@ struct SpinSiteType
   S::Rational{Int} 
 end
 
-tag(::SpinSiteType) = "SpinSiteType"
+# function tag(s::SpinSiteType) 
+#   # return for 1//1 1 and for 3//2 3/2
+#   double = s.S * 2
+#   integ = Int(numerator(double))
+#   if integ % 2 == 0
+#     flo = Int(integ/2)
+#     return string(flo)
+#   else
+#     return "$integ/2"
+#   end
+# end
+tag(s::SpinSiteType) = s.S
 
 
 function generate_spin_states(S::Rational{Int})
@@ -36,7 +47,7 @@ end
 
 function state_to_index(s::Index)
   index_str = string(s)
-  S = match(r"Spin=(\d+//\d+)", index_str).captures[1]
+  S = match(r"S=(\d+//\d+)", index_str).captures[1]
   state_index_map = state_to_index(parse(Rational{Int}, S))
   return state_index_map
 end
@@ -51,18 +62,27 @@ function ITensors.state(s::Index, str::String)
 end
 
 function ITensors.siteind(s::SpinSiteType; addtags="", kwargs...)
-  dim = 2 * s.S + 1  # Calculate dimension based on spin S
   sp = space(s; kwargs...)
-  return Index(sp, "Site, $(tag(s)), $addtags")
+  return Index(sp, "Site,S=$(tag(s))")
+end
+
+function ITensors.siteind(s::SpinSiteType, n::Integer; addtags="", kwargs...)
+  sp = space(s; kwargs...)
+  return Index(sp, "S=$(tag(s)),Site,n=$n")
 end
 
 function ITensors.siteind(i::Index{Rational{Int}}; kwargs...)
-  S = parse(Rational{Int}, match(r"Spin=(\d+//\d+)", string(i)).captures[1])
+  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(i)).captures[1])
   return siteind(SpinSiteType(S); kwargs...)
 end  
 
+function ITensors.siteind(i::Index{Rational{Int}}, n::Integer; kwargs...)
+  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(i)).captures[1])
+  return siteind(SpinSiteType(S), n; kwargs...)
+end 
+
 function ITensors.siteinds(s::SpinSiteType, N::Int; kwargs...)
-  return [siteind(s; kwargs...) for n in 1:N]
+  return [siteind(s, n; kwargs...) for n in 1:N]
 end
 
 function ITensors.space(s::SpinSiteType; conserve_qns=false, conserve_sz=conserve_qns, qnname_sz="Sz")
@@ -71,21 +91,20 @@ function ITensors.space(s::SpinSiteType; conserve_qns=false, conserve_sz=conserv
     for m in -s.S:s.S
       push!(QNarray, QN(qnname_sz, Int(2*m)) => 1)
     end
-    println(stderr, "QNarray = ", QNarray)
     return QNarray
   end
   return 2*s.S + 1
 end
 
-function ITensors.op(::OpName"Sz", s::SpinSiteType)
+function op(::OpName"Sz", s::SpinSiteType)
   S = s.S
   d = 2 * S + 1
-  return diagm(-S:S) 
+  return Diagonal(-S:S) 
 end
 
-function ITensors.op(::OpName"S+", s::SpinSiteType)
+function op(::OpName"S+", s::SpinSiteType)
   S = s.S
-  d = 2 * S + 1
+  d = Int(2 * S + 1)
   Sp = zeros(d, d)
   for i in 1:(d - 1)
       Sp[i, i + 1] = sqrt(S * (S + 1) - (-S + i - 1) * (-S + i))
@@ -93,8 +112,24 @@ function ITensors.op(::OpName"S+", s::SpinSiteType)
   return Sp
 end
 
-function ITensors.op(::OpName"S-", s::SpinSiteType)
-  return adjoint(op("S+", s))
+function op(::OpName"S-", s::SpinSiteType)
+  return adjoint(op(OpName("S+"), s))
+end
+
+function op(::OpName"Id", s::SpinSiteType)
+  S = s.S
+  d = Int(2 * S + 1)
+  return Diagonal(ones(d))
+end
+
+function ITensors.op(opname::OpName, s::SiteType)
+  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
+  return op(opname, SpinSiteType(S))
+end
+
+function ITensors.op(opname::OpName"Sz", s::Index{Rational{Int}})
+  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
+  return op(opname, SpinSiteType(S))
 end
 
 function ITensors.siteinds(str::String, N::Int; kwargs...)
@@ -104,5 +139,4 @@ function ITensors.siteinds(str::String, N::Int; kwargs...)
   else
     error("Invalid siteind string: $str")
   end
-end
 end
