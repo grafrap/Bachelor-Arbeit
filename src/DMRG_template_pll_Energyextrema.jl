@@ -24,75 +24,79 @@ lib_dir = "."
 include(lib_dir*"/Operators.jl")
 include(lib_dir*"/Hamiltonian.jl")
 include(lib_dir*"/DMRGSweeps.jl")
+include(lib_dir*"/Customspace.jl")
 import .Operators
 import .Hamiltonian
 import .DMRGSweeps
+import .Customspace
 # run this script with: mpiexecjl -n 4 julia DMRG_template_pll.jl 0.5 10 0.4 0 1 true true > outputs/output.txt
 
 # functions #
 function spinstate_sNSz(s,N,Sz;random="yes")
   #=
-       function that creates a spin state from s,N,Sz
+      function that creates a spin state from s,N,Sz
 
-       Notes:
-       - as of now, only s=1/2 and s=1 are possible
-       - for s=1, the state created has minimal nr of "Z0"
-       more info on the available spin states: https://itensor.github.io/ITensors.jl/dev/IncludedSiteTypes.html
-       more on new s: https://github.com/ITensor/ITensors.jl/blob/main/src/lib/SiteTypes/src/sitetypes/spinhalf.jl
+      Notes:
+      - as of now, only s=1/2 and s=1 are possible
+      - for s=1, the state created has minimal nr of "Z0"
+      more info on the available spin states: https://itensor.github.io/ITensors.jl/dev/IncludedSiteTypes.html
+      more on new s: https://github.com/ITensor/ITensors.jl/blob/main/src/lib/SiteTypes/src/sitetypes/spinhalf.jl
+      Instructions on new sitetype: https://itensor.github.io/ITensors.jl/stable/examples/Physics.html
   =#
   # In total adds up to Sz, with available states from -s, -s+1, ..., s
     # TODO: Generalize this function for many s
     # general s
-  if abs(Sz) > s*N
-    throw(ArgumentError("Check s, N and Sz"))
+  # Check if Sz is valid
+  if abs(Sz) > s * N
+    @error "Check s, N and Sz"
+    exit(1)
+  end
+  # Check if Sz is reachable with the given s
+  if (s*N) % 1 != Sz % 1
+    @error "Check s, N and Sz"
+    exit(1)
   end
 
-  state = fill("Dn", N)
-  
-  # s=1/2
-  if s==1/2
-    if N%2 == abs(2*Sz)%2
-      for i in 1:Int(N/2+Sz)
-        state[i] = "Up"
+  s = Rational(s)
+  # Get the possible states for the given spin value
+  possible_states = Customspace.generate_spin_states(s)
+  state = fill(possible_states[1], N)
+  sum = N * -s
+  state_index_map = Customspace.state_to_index(s)
+
+  # Fill the state array with the correct states
+  while sum < Sz
+    for i in 1:N
+      if sum == Sz
+        break
       end
-      # example output ["Up", "Dn", "Up", "Up", "Up", "Dn", "Up", "Up", "Dn", "Dn"] for s = 0.5, Sz = 1, N = 10
-      # in this case, "Up" means Sz = 1/2 and "Dn" means Sz = -1/2, sum of all sz(i) = Sz
-    else
-      throw(ArgumentError("Check s, N and Sz"))
-    end
-  # s=1
-  elseif s==1
-    if (2*Sz)%2 == 0
-      if N%2==0
-        for i in 1:Int(N/2+floor(Sz/2))
-          state[i] = "Up"
-        end
-        if abs(Sz%2)==1
-          state[Int(N/2+floor(Sz/2))+1] = "Z0"
-        end
-      elseif N%2==1
-        for i in 1:Int(floor(N/2)+ceil(Sz/2))
-          state[i] = "Up"
-        end
-        if abs(Sz%2)==0
-          state[Int(floor(N/2)+ceil(Sz/2))+1] = "Z0"
-        end
+      # Check if current state is already the biggest state
+      if state_index_map[state[i]] == length(possible_states)
+        continue
       end
-    else
-      throw(ArgumentError("Check s, N and Sz"))
+      # Check, if we are free to choose a random bigger state
+      if sum + s < Sz
+        # Assign random bigger state to the current index
+        current_state = possible_states[rand(state_index_map[state[i]]+1:end)]
+        state[i] = current_state
+        sum += state_index_map[current_state] - 1
+      else
+        println("sum = $sum")
+        println("state_index_map[state[i]] = $(state_index_map[state[i]])")
+        # Assign the restvalue to the current index
+        state[i] = possible_states[Int(state_index_map[state[i]] + (Sz - sum) + 1)]
+        sum += state_index_map[state[i]]-1
+      end
     end
-    # example output: ["Z0", "Dn", "Up", "Up", "Dn", "Up", "Up", "Up", "Dn", "Dn"] for s = 1, Sz = 1, N = 10
-    # in this case, "Up" means Sz = 1, "Dn" means Sz = -1 and "Z0" means Sz = 0, sum of all sz(i) = Sz
-  else
-    println(stderr, "ERROR: as of now, only s=1/2 and s=1 are possible")
-    exit()
   end
 
-  if random=="yes"
+
+  # Shuffle the state array if randomization is requested
+  if random == "yes"
     shuffle!(state)
   end
 
-  return(state)
+  return state
 end
 
 # main #
@@ -158,8 +162,11 @@ if rank == 0
 
   
   # TODO: check if there are more symmetry conservation options
+  # https://github.com/ITensor/ITensors.jl/blob/f37d4a5dd8a7376d0daedd74bc326cb6f9653b00/src/lib/SiteTypes/src/sitetypes/spinhalf.jl#L2-L13
+  # available options: conserve_qns, conserve_sz, conserve_szparitiy
   # system
   Nsites = N
+  
   if (2*s)%2 == 0
     sites = siteinds("S="*string(Int(s)),Nsites;conserve_sz=conserve_symmetry)
   else
@@ -168,8 +175,8 @@ if rank == 0
   
   # initial state
   statei = spinstate_sNSz(s, N, Sz)
-  linkdim = 100 # variable to randomize initial MPS
-  ψi = randomMPS(sites, statei, linkdim)
+  linkdim = 100 # variable to randomize initial MPS$
+  ψi = randomMPS(sites, statei; linkdims=linkdim)
   
   # S² operator
   S2 = Operators.S2_op(Nsites, sites)
@@ -177,21 +184,10 @@ if rank == 0
   # Sz(i) operator
   Szi = [Operators.Szi_op(i, sites) for i in 1:Nsites]
 
-  # Identity operator
-  I = Operators.Identity_op(sites)
-  # TODO: write the sites to HDF5 and not the operators
-  # show(sites)
-
   # Print the operators to HDF5 file
   if print_HDF5
     h5file = h5open("outputs/operators_data.h5", "w")
     write(h5file, "sites", sites)
-    write(h5file, "S2", S2)
-    group = create_group(h5file, "Sz")
-    for i in 1:Nsites
-      write(group, "Sz_$i", Szi[i])
-    end
-    write(h5file, "I", I)
     close(h5file)
   end
   
