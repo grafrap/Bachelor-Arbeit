@@ -235,7 +235,7 @@ H = read(f, "H", MPO)
 close(f)
 
 # read in the ground state energy
-fr = open("outputs/Szi_Sz_pll=0.0.txt", "r")
+fr = open("outputs/Szi_Sz_pll=1.0.txt", "r")
 lines = readlines(fr)
 close(fr)
 
@@ -255,7 +255,7 @@ Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 # calculate the dynamical correlator
 len_ω = 1000
 W = -E0 - E1
-ω = collect(range(0.005, 2, len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+ω = collect(range(0.005, stop=2.0, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 i = 1
 N_min = 8
 χ = zeros(length(Sz), len_ω-1)
