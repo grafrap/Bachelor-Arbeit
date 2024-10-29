@@ -1,0 +1,95 @@
+s.S = 3//2
+states = Any["Dn3//2", "Dn1//2", "Up1//2", "Up3//2"]
+s.S = 3//2
+states = Any["Dn3//2", "Dn1//2", "Up1//2", "Up3//2"]
+state_index_map = Dict("Dn1//2" => 2, "Up1//2" => 3, "Up3//2" => 4, "Dn3//2" => 1)
+state[i] = Up3//2
+sum = -15//1
+state_index_map[current_state] = 4
+sum = -12//1
+state[i] = Up1//2
+sum = -12//1
+state_index_map[current_state] = 3
+sum = -10//1
+state[i] = Up1//2
+sum = -10//1
+state_index_map[current_state] = 3
+sum = -8//1
+state[i] = Up3//2
+sum = -8//1
+state_index_map[current_state] = 4
+sum = -5//1
+state[i] = Up3//2
+sum = -5//1
+state_index_map[current_state] = 4
+sum = -2//1
+state[i] = Up3//2
+sum = -2//1
+state_index_map[current_state] = 4
+sum = 1//1
+state = ["Up3//2", "Up1//2", "Up1//2", "Up3//2", "Up3//2", "Up3//2", "Dn3//2", "Dn3//2", "Dn3//2", "Dn3//2"]
+sum = 1//1
+ERROR: LoadError: BoundsError: attempt to access 4-element Vector{Any} at index [0]
+Stacktrace:
+ [1] getindex
+   @ ./essentials.jl:13 [inlined]
+ [2] spinstate_sNSz(s::Float64, N::Int64, Sz::Float64; random::String)
+   @ Main ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:91
+ [3] spinstate_sNSz
+   @ ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:35 [inlined]
+ [4] main()
+   @ Main ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:182
+ [5] top-level scope
+   @ ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:316
+in expression starting at /home/raphael/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:316
+
+s.S = 3//2
+states = Any["Dn3//2", "Dn1//2", "Up1//2", "Up3//2"]
+s.S = 3//2
+states = Any["Dn3//2", "Dn1//2", "Up1//2", "Up3//2"]
+state_index_map = Dict("Dn1//2" => 2, "Up1//2" => 3, "Up3//2" => 4, "Dn3//2" => 1)
+state[i] = Up3//2
+sum = -15//1
+state_index_map[current_state] = 4
+sum = -12//1
+state[i] = Up1//2
+sum = -12//1
+state_index_map[current_state] = 3
+sum = -10//1
+state[i] = Up1//2
+sum = -10//1
+state_index_map[current_state] = 3
+sum = -8//1
+state[i] = Up3//2
+sum = -8//1
+state_index_map[current_state] = 4
+sum = -5//1
+state[i] = Up1//2
+sum = -5//1
+state_index_map[current_state] = 3
+sum = -3//1
+state[i] = Dn1//2
+sum = -3//1
+state_index_map[current_state] = 2
+sum = -2//1
+state[i] = Dn1//2
+sum = -2//1
+state_index_map[current_state] = 2
+sum = -1//1
+state = ["Up3//2", "Up1//2", "Up1//2", "Up3//2", "Up1//2", "Dn1//2", "Dn1//2", "Dn3//2", "Dn3//2", "Dn3//2"]
+sum = -1//1
+state = ["Up3//2", "Up1//2", "Up1//2", "Up3//2", "Up1//2", "Dn1//2", "Dn1//2", "Dn1//2", "Dn3//2", "Dn3//2"]
+sum = -3//2
+ERROR: LoadError: InexactError: Int64(2.5)
+Stacktrace:
+ [1] Int64
+   @ ./float.jl:900 [inlined]
+ [2] spinstate_sNSz(s::Float64, N::Int64, Sz::Float64; random::String)
+   @ Main ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:91
+ [3] spinstate_sNSz
+   @ ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:35 [inlined]
+ [4] main()
+   @ Main ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:182
+ [5] top-level scope
+   @ ~/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:316
+in expression starting at /home/raphael/Dokumente/Studium/7.Semester/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl:316
