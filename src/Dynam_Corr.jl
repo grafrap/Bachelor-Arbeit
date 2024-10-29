@@ -3,7 +3,7 @@ using ITensorMPS
 using HDF5
 using InteractiveUtils
 using LinearAlgebra
-# using Base.Threads
+using Base.Threads
 
 lib_dir = "."
 include(lib_dir*"/Operators.jl")
@@ -82,7 +82,7 @@ function Chebyshev_expansion(x::Vector, N::Int)
   return T
 end
   
-function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω::Float64, N::Int)
+function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Float64, N::Int)
   #=
     Implements the dynamical spin correlator for a single frequency
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
@@ -130,7 +130,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
     
     χ_next = 1/(a * π * sqrt(1 - ω_^2)) * (g[1] * μ[1] + 2 * sum([g[n]*μ[n]*T[n] for n in 2:N]))
     error = abs(χ_next - χ)
-    println(stderr, "Error = $error")
+    println(stderr, "N = $N, i = $i, Error = $error")
     if error < 1e-4 
       break
     end
@@ -140,7 +140,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
 end
 
 
-function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3, abstol::Float64=1e-5)
+function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3, abstol::Float64=1e-5)
   #=
   Implements the dynamical spin correlator for a vector of frequencies
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
@@ -201,8 +201,9 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, I::MPO, E0::Float64, E1::Fl
     χ_next = prefactor .* (g[1] .* μ[1] .+ 2 .* sumval)
 
     error = maximum(abs.(χ_next .- χ))
-    println(stderr, "Error = $error")
+    println(stderr, "N = $N_min, i = $i, Error = $error")
     χ = χ_next
+    println(stderr, "N = $N_min, i = $i,  χ = $χ")
     if error < abstol || N_min > N_max || error > 1
       break
     end
@@ -234,7 +235,7 @@ H = read(f, "H", MPO)
 close(f)
 
 # read in the ground state energy
-fr = open("outputs/Szi_Sz_pll=1.0.txt", "r")
+fr = open("outputs/Szi_Sz_pll=0.0.txt", "r")
 lines = readlines(fr)
 close(fr)
 
@@ -256,12 +257,14 @@ len_ω = 1000
 W = -E0 - E1
 ω = collect(range(0.005, 2, len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 i = 1
-N_min = 3
-χ = zeros(length(Sz), len_ω)
-
-#=@threads =#for i in eachindex(Sz)
+N_min = 8
+χ = zeros(length(Sz), len_ω-1)
+# TODO: test with results from the paper: formula 9 and fig 5
+# Take J = 1, J2 = 0.19J, ΔJ = 0.03J, N_sites = 18, S = 1, Sz = 1
+# mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 1 18 1.0 0 0 true true > outputs/output.txt 2> outputs/error.txt
+@threads for i in eachindex(Sz)
   println(stderr, "Calculating χ for Sz[$i]")
-  χ[i, :] = Dynamic_corrolator(ψ0, H, Sz[i], I, E0, E1, ω; N_min)
+  χ[i, :] = Dynamic_corrolator(ψ0, H, Sz[i], i, I, E0, E1, ω; N_min)
 end
 
 println(χ)
