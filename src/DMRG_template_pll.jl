@@ -174,7 +174,7 @@ if rank == 0
   Szi = [Operators.Szi_op(i, sites) for i in 1:Nsites]
 
   # Identity operator
-  I = Operators.Identity_op(Nsites, sites)
+  I = Operators.Identity_op(sites)
 
   # Print the operators to HDF5 file
   if print_HDF5

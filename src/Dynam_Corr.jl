@@ -182,6 +182,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   println(stderr, "Calculating Chebyshev expansion")
   ω_ = ω./a .- W_ # ω', scaled ω
   Δω = ω[2] - ω[1]
+  sum_old = 0
   T = Chebyshev_expansion(ω_, N_min)
 
   prefactor = 1 ./(a * π * sqrt.(1 .- ω_.^2))
@@ -203,19 +204,24 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     error = maximum(abs.(χ_next .- χ))
     println(stderr, "N = $N_min, i = $i, Error = $error")
     χ = χ_next
-    println(stderr, "N = $N_min, i = $i,  χ = $χ")
+    # println(stderr, "N = $N_min, i = $i,  χ = $χ")
     if error < abstol || N_min > N_max || error > 1
       break
     end
 
     #calculate the integral of χ over the frequencies with the trapezoidal rule
     sum_χ = 0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1]) * Δω
+    if abs(sum_χ - sum_old) < 2e-5
+      break
+    end
+    println(stderr, "difference in sum = $(abs(sum_χ - sum_old))")
+    sum_old = sum_χ
     println(stderr, "sum of all χ = $sum_χ")
     # TODO: add output for precision (sums to s*(s+1) [probably divided by 3]) s, is the one from the spin of this site
     # println(stderr, "χ = $χ")
   end
       
-  println(stderr, χ)
+  # println(stderr, χ)
   return χ
 end
 
@@ -255,10 +261,10 @@ Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 # calculate the dynamical correlator
 len_ω = 1000
 W = -E0 - E1
-ω = collect(range(0.005, 2, len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+ω = collect(range(0.005, 20, len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 i = 1
 N_min = 8
-χ = zeros(length(Sz), len_ω-1)
+χ = zeros(length(Sz), length(ω))
 # TODO: test with results from the paper: formula 9 and fig 5
 # Take J = 1, J2 = 0.19J, ΔJ = 0.03J, N_sites = 18, S = 1, Sz = 1
 # mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 1 18 1.0 0 0 true true > outputs/output.txt 2> outputs/error.txt
