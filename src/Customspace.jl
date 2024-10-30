@@ -52,9 +52,18 @@ function state_to_index(s::Index)
   return state_index_map
 end
 
-ITensors.state(s::SpinSiteType, n::Int) = IndexVal(n, siteind(s))
-ITensors.state(s::SpinSiteType, str::String) = IndexVal(state_to_index(s.S)[str], siteind(s))
+function ITensors.state(s::SpinSiteType, n::Int)
+  println(stderr, "state was called with n")
+  return IndexVal(n, siteind(s))
+end
+
+function ITensors.state(s::SpinSiteType, str::String)
+  println(stderr, "state was called with str")
+  IndexVal(state_to_index(s.S)[str], siteind(s))
+end
+
 function ITensors.state(s::Index, str::String)
+  println(stderr, "state was called with index and str")
   state_index_map = state_to_index(s)
   arr = zeros(Int, length(state_index_map))
   arr[state_index_map[str]] = 1
@@ -63,7 +72,7 @@ end
 
 function ITensors.siteind(s::SpinSiteType; addtags="", kwargs...)
   sp = space(s; kwargs...)
-  return Index(sp, "Site,S=$(tag(s))")
+  return Index(sp, "Site,S=$(tag(s)), $addtags")
 end
 
 function ITensors.siteind(s::SpinSiteType, n::Integer; addtags="", kwargs...)
@@ -98,14 +107,17 @@ end
 
 function op(::OpName"Sz", s::SpinSiteType)
   S = s.S
-  d = 2 * S + 1
-  return Diagonal(-S:S) 
+  Sz = zeros(Float64, (Int(2 * S + 1), Int(2 * S + 1)))
+  for i in -S:S
+    Sz[Int(i + S + 1), Int(i + S + 1)] = -i
+  end
+  return Sz
 end
 
 function op(::OpName"S+", s::SpinSiteType)
   S = s.S
   d = Int(2 * S + 1)
-  Sp = zeros(d, d)
+  Sp = zeros(Float64, d, d)
   for i in 1:(d - 1)
       Sp[i, i + 1] = sqrt(S * (S + 1) - (-S + i - 1) * (-S + i))
   end

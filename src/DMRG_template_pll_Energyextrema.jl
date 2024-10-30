@@ -30,15 +30,7 @@ import .Operators
 import .Hamiltonian
 import .DMRGSweeps
 # run this script with: mpiexecjl -n 4 julia DMRG_template_pll.jl 0.5 10 0.4 0 1 true true > outputs/output.txt
-function ITensors.op(opname::OpName"Sz", s::Index{Vector{Pair{QN, Int64}}})
-  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
-  return op(opname, SpinSiteType(S))
-end
 
-function ITensors.op(opname::OpName"Sz", s::Index{Rational{Int}})
-  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
-  return op(opname, SpinSiteType(S))
-end
 # functions #
 function spinstate_sNSz(s,N,Sz;random="yes")
   #=
@@ -189,7 +181,6 @@ if rank == 0
   ψi = randomMPS(sites, statei; linkdims=linkdim)
   
   # S² operator
-  println(stderr, "sites[1]: ", sites[1])
   S2 = Operators.S2_op(Nsites, sites)
   
   # Sz(i) operator
