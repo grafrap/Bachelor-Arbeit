@@ -102,7 +102,7 @@ function ITensors.space(s::SpinSiteType; conserve_qns=false, conserve_sz=conserv
     end
     return QNarray
   end
-  return 2*s.S + 1
+  return Int(2*s.S + 1)
 end
 
 function op(::OpName"Sz", s::SpinSiteType)
@@ -135,9 +135,24 @@ function op(::OpName"Id", s::SpinSiteType)
 end
 
 function ITensors.op(opname::OpName, s::SiteType)
-  S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
+  S_str = match(r"S=(\d+//\d+)", string(s)).captures[1]
+  
+  # Split the string and convert to integers, this is a workaround on daint
+  num, denom = split(S_str, "//")
+  numerator = parse(Int, num)
+  denominator = parse(Int, denom)
+  
+  # Construct the Rational{Int}
+  S = numerator // denominator
+  
   return op(opname, SpinSiteType(S))
 end
+
+# This doesn't work on daint
+# function ITensors.op(opname::OpName, s::SiteType)
+#   S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(s)).captures[1])
+#   return op(opname, SpinSiteType(S))
+# end
 
 function ITensors.siteinds(str::String, N::Int; kwargs...)
   if startswith(str, "S=")
