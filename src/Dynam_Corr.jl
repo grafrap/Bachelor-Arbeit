@@ -4,6 +4,7 @@ using HDF5
 using InteractiveUtils
 using LinearAlgebra
 using Base.Threads
+using Dates
 
 lib_dir = "."
 include(lib_dir*"/Operators.jl")
@@ -190,6 +191,8 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   χ = prefactor .* (g[1] * μ[1] .+ 2 .* sumval)
 
   while true 
+    start_time = DateTime(now())
+
     N_min += 1
     g = Jackson_dampening(N_min)
     t_next = 2*apply(H_scaled, t[end]) - t[end-1]
@@ -202,21 +205,32 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     χ_next = prefactor .* (g[1] .* μ[1] .+ 2 .* sumval)
 
     error = maximum(abs.(χ_next .- χ))
-    println(stderr, "N = $N_min, i = $i, Error = $error")
     χ = χ_next
+    sum_χ = 0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1]) * Δω
+    end_time = DateTime(now())
+    Δt = end_time - start_time
+    println(stderr, "N = $N_min, i = $i, Error = $error, sum_χ = $sum_χ, Δsum = $(abs(sum_χ - sum_old)), Δt = $Δt")
     # println(stderr, "N = $N_min, i = $i,  χ = $χ")
-    if error < abstol || N_min > N_max || error > 1
+    if error < abstol || N_min > N_max || error > 1 || abs(sum_χ - sum_old) < 2e-5
+      # print what of the stopping criteria was met
+      if error < abstol
+        println(stderr, "Error < abstol")
+      end
+      if N_min > N_max
+        println(stderr, "N_min > N_max")
+      end
+      if error > 1
+        println(stderr, "Error > 1")
+      end
+      if abs(sum_χ - sum_old) < 2e-5
+        println(stderr, "Δsum < 2e-5")
+      end
       break
     end
+    sum_old = sum_χ
 
     #calculate the integral of χ over the frequencies with the trapezoidal rule
-    sum_χ = 0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1]) * Δω
-    if abs(sum_χ - sum_old) < 2e-5
-      break
-    end
-    println(stderr, "difference in sum = $(abs(sum_χ - sum_old))")
-    sum_old = sum_χ
-    println(stderr, "sum of all χ = $sum_χ")
+
     # TODO: add output for precision (sums to s*(s+1) [probably divided by 3]) s, is the one from the spin of this site
     # println(stderr, "χ = $χ")
   end
@@ -263,7 +277,7 @@ len_ω = 1000
 W = -E0 - E1
 ω = collect(range(0.005, stop=20, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 i = 1
-N_min = 8
+N_min = 5
 χ = zeros(length(Sz), length(ω))
 # TODO: test with results from the paper: formula 9 and fig 5
 # Take J = 1, J2 = 0.19J, ΔJ = 0.03J, N_sites = 18, S = 1, Sz = 1
