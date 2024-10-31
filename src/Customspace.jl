@@ -102,7 +102,7 @@ function ITensors.space(s::SpinSiteType; conserve_qns=false, conserve_sz=conserv
     end
     return QNarray
   end
-  return 2*s.S + 1
+  return Int(2*s.S + 1)
 end
 
 function op(::OpName"Sz", s::SpinSiteType)
