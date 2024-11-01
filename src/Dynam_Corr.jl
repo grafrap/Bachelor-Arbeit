@@ -29,12 +29,13 @@ function Chebyshev_vectors(B::MPO, H::MPO, ψ::MPS, N::Int)
     Implements the Chebyshev vectors ∣t_n⟩ = T_n(Ĥ')*Ĉ|ψ⟩
   =#
   t = Vector{MPS}(undef, N+1)
-  t[1] = apply(B, ψ)
-  t[2] = apply(H, t[1])
+  t[1] = apply(B, ψ; cutoff=1e-6)
+  t[2] = apply(H, t[1]; cutoff=1e-6)
 
   for n in 3:N+1
     println(stderr, "Calculating Chebyshev vector $n")
-    t[n] = 2*apply(H, t[n-1]) - t[n-2]
+    t[n] = 2*apply(H, t[n-1]; cutoff=1e-6)
+    t[n] = add(t[n], -t[n-2]; cutoff=1e-6)
   end
 
   return t
@@ -151,7 +152,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     N_min = 3
   end
   # TODO: stopping criterion for the Chebyshev expansion based on W or J or precision to sum to s*(s+1)
-  N_max = 200
+  N_max = 1000
 
   ϵ = 0.025
   W = -E0 - E1 # W* = -E0 + E1
@@ -195,23 +196,36 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
 
     N_min += 1
     g = Jackson_dampening(N_min)
-    t_next = 2*apply(H_scaled, t[end]) - t[end-1]
 
+    bond_array = zeros(3)
+    bond_array[1] = maxlinkdim(t[end])
+    # Time measurement for line 197
+    t_next = 2*apply(H_scaled, t[end]; cutoff=1e-6)
+    bond_array[2] = maxlinkdim(t_next)
+
+    t_next = add(t_next, -t[end-1]; cutoff=1e-6)
+    bond_array[3] = maxlinkdim(t_next)
+    println(stderr, "Bond dimensions: $(bond_array)")
     push!(t, t_next)
+
     push!(μ, inner(ψ', A, t[end]))
+
     T = hcat(T, 2*ω_.*T[:, end] .- T[:, end-1])
 
     sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min]), dims=2)
+
     χ_next = prefactor .* (g[1] .* μ[1] .+ 2 .* sumval)
 
     error = maximum(abs.(χ_next .- χ))
     χ = χ_next
-    sum_χ = 0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1]) * Δω
+    sum_χ = (0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1])) * Δω
+
     end_time = DateTime(now())
     Δt = end_time - start_time
-    println(stderr, "N = $N_min, i = $i, Error = $error, sum_χ = $sum_χ, Δsum = $(abs(sum_χ - sum_old)), Δt = $Δt")
-    # println(stderr, "N = $N_min, i = $i,  χ = $χ")
-    if error < abstol || N_min > N_max || error > 1 || abs(sum_χ - sum_old) < 2e-5
+
+    println(stderr, "N = $N_min\t i = $i\t Error = $error\t sum_χ = $sum_χ\t Δsum = $(abs(sum_χ - sum_old))\t Δt = $Δt")
+
+    if error < abstol || N_min > N_max || error > 1 #|| abs(sum_χ - sum_old) < abstol
       # print what of the stopping criteria was met
       if error < abstol
         println(stderr, "Error < abstol")
@@ -220,7 +234,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
         println(stderr, "N_min > N_max")
       end
       if error > 1
-        println(stderr, "Error > 1")
+        @error "Error > 1"
       end
       if abs(sum_χ - sum_old) < 2e-5
         println(stderr, "Δsum < 2e-5")
@@ -228,14 +242,8 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
       break
     end
     sum_old = sum_χ
-
-    #calculate the integral of χ over the frequencies with the trapezoidal rule
-
-    # TODO: add output for precision (sums to s*(s+1) [probably divided by 3]) s, is the one from the spin of this site
-    # println(stderr, "χ = $χ")
   end
       
-  # println(stderr, χ)
   return χ
 end
 
@@ -255,7 +263,7 @@ H = read(f, "H", MPO)
 close(f)
 
 # read in the ground state energy
-fr = open("outputs/Szi_Sz_pll=0.0.txt", "r")
+fr = open("outputs/Szi_Sz_pll=1.0.txt", "r")
 lines = readlines(fr)
 close(fr)
 
@@ -275,7 +283,7 @@ Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 # calculate the dynamical correlator
 len_ω = 1000
 W = -E0 - E1
-ω = collect(range(0.005, stop=20, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+ω = collect(range(0.0001, stop=2, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 i = 1
 N_min = 5
 χ = zeros(length(Sz), length(ω))
