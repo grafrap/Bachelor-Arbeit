@@ -108,9 +108,9 @@ start_time = time.time()
 	Hubbard model at half filling with U >> t maps to spin-1/2 Heisenberg
 		model with J = 4*t^2/U
 '''
-s = 1.5
+s = 2
 N = int(sys.argv[1])
-J = 10
+J = 1
 
 # other parameters
 '''
@@ -123,7 +123,6 @@ if (2*s)%2==0 or N%2==0:
 else:
 	Sz = 1/2
 nexc = 0
-Sz = 1/2
 
 # open files
 fw = open("N_" + str(N) + ".txt", "w")

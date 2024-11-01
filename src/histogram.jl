@@ -20,10 +20,15 @@ function read_file_as_matrix(file_path)
 end
 
 # Read in the files
-file_path = "outputs/chi_values.txt"
+file_path = "outputs/chi_values_18_500.txt"
 matrix = read_file_as_matrix(file_path)
 # println(matrix)
 
+
+# for col in 1:size(matrix, 2)
+#   matrix[:, col] .-= minimum(matrix[:, col])
+#   matrix[:, col] ./= maximum(matrix[:, col])
+# end
 # Normalize the matrix
 min = minimum(matrix)
 matrix = matrix .- min

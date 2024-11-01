@@ -11,6 +11,95 @@ include(lib_dir*"/Operators.jl")
 include(lib_dir*"/Customspace.jl")
 import .Operators
 
+function krylov_elements(H::MPO, ψ::MPS, N::Int)
+  #=
+    Implements the Krylov elements K_n = Ĥ^(n-1)*|ψ⟩
+    Orthogonalizes the Krylov elements using the Gram-Schmidt process
+    and return the reduced Hamiltonian H_red (n x n matrix) 
+  =#
+
+  K = Vector{MPS}(undef, N)
+  K[1] = ψ
+  # normalize the first element
+  normalize!(K[1])
+  H_red = zeros(N, N)
+
+  for n in 2:N
+    K[n] = apply(H, K[n-1])
+    for i in 1:(n-1)
+      # orthonormalize via Gram-Schmidt
+      K[n] -= inner(K[i], K[n]) * K[i]
+    end
+    normalize!(K[n])
+  end
+
+  # calculate the reduced Hamiltonian
+  for i in 1:N
+    for j in 1:N
+      H_red[i, j] = inner(K[i]', H, K[j])
+    end
+  end
+
+  return H_red
+end
+
+function energy_truncation(H::MPO, N::Int, ϵ::Float64, t::MPS)
+
+  println(stderr, "Calculating the energy truncation")
+
+  for i in eachindex(t)
+    sites = siteinds(t[1])
+
+    # Build the Krylov subspace
+    K = Vector{MPS}(undef, N)
+    K[1] = t
+    normalize!(K[1])
+    for n in 2:N
+      K[n] = apply(H, K[n-1])
+      for i in 1:(n-1)
+        # Orthogonalize via Gram-Schmidt
+        K[n] -= inner(K[i], K[n]) * K[i]
+      end
+      normalize!(K[n])
+    end
+
+    # Calculate the reduced Hamiltonian
+    H_red = zeros(N, N)
+    for i in 1:N
+      for j in 1:N
+        H_red[i, j] = inner(K[i]', H, K[j])
+      end
+    end
+
+    # Diagonalize H_red
+    λ, v = eigen(H_red)
+    println(stderr, "Eigenvalues: ", λ)
+
+    # Truncate the states
+    P = Operators.Identity_op(sites)
+
+    # Truncate the states by subtracting |v_i⟩⟨v_i|
+    count = 0
+    for i in 1:N
+      if λ[i] > ϵ
+        count += 1
+        # Construct |v_i⟩ as an MPS
+        for i in 1:N
+          P -= outer(v[:, i], v[:, i])
+        end
+      end
+    end
+
+    t = apply(P, t)
+    
+    if count == 0
+      println(stderr, "No states to truncate")
+    else
+      println(stderr, "Truncated $count states")
+    end
+
+  end
+end
 
 function Jackson_dampening(N::Int)
   #=
@@ -30,12 +119,16 @@ function Chebyshev_vectors(B::MPO, H::MPO, ψ::MPS, N::Int)
   =#
   t = Vector{MPS}(undef, N+1)
   t[1] = apply(B, ψ; cutoff=1e-6)
+  energy_truncation(H, 30, 1.0, t[1])
   t[2] = apply(H, t[1]; cutoff=1e-6)
+  energy_truncation(H, 30, 1.0, t[2])
+
 
   for n in 3:N+1
     println(stderr, "Calculating Chebyshev vector $n")
-    t[n] = 2*apply(H, t[n-1]; cutoff=1e-6)
-    t[n] = add(t[n], -t[n-2]; cutoff=1e-6)
+    t[n] = 2*apply(H, t[n-1]; cutoff=1e-8)
+    t[n] = add(t[n], -t[n-2]; cutoff=1e-8)
+    energy_truncation(H, 30, 1.0, t[n])
   end
 
   return t
@@ -101,7 +194,8 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   a = W/(2*W_)
   ω_ = ω/a - W_ # ω', scaled ω
   H_scaled = 1/a * (H - E0*I) - W_*I
-  
+  # H_pows = build_H_pow(H_scaled, 30)
+
   
   #calculate the Jackson dampening factors
   println(stderr, "Calculating Jackson dampening factors")
@@ -125,6 +219,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     N += 1
     g = Jackson_dampening(N)
     t_next = 2*apply(H_scaled, t[end]) - t[end-1]
+    # energy_truncation(H_scaled, 30, 1.0, t_next)
     
     push!(t, t_next)
     push!(μ, inner(ψ', A, t[end]))
@@ -155,7 +250,8 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   N_max = 1000
 
   ϵ = 0.025
-  W = -E0 - E1 # W* = -E0 + E1
+  # W = 4 * ω[end] # W* = -E0 + E1
+  W = 2 * ω[end]#-E0 - E1
   for i in 1:length(ω)
     @assert ω[i] < W "ω must be less than W"
     @assert ω[i] > 0 "ω must be positive"
@@ -164,6 +260,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   W_ = 1 - 0.5*ϵ # W', scaled W
   a = W/(2*W_)
   H_scaled = 1/a * (H - E0*I) - W_*I
+  # H_pows = build_H_pow(H_scaled, 30)
 
   #calculate the Jackson dampening factors
   println(stderr, "Calculating Jackson dampening factors")
@@ -190,6 +287,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   prefactor = 1 ./(a * π * sqrt.(1 .- ω_.^2))
   sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min]), dims=2)
   χ = prefactor .* (g[1] * μ[1] .+ 2 .* sumval)
+  bond_array = zeros(3)
 
   while true 
     start_time = DateTime(now())
@@ -197,15 +295,14 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     N_min += 1
     g = Jackson_dampening(N_min)
 
-    bond_array = zeros(3)
     bond_array[1] = maxlinkdim(t[end])
-    # Time measurement for line 197
-    t_next = 2*apply(H_scaled, t[end]; cutoff=1e-6)
+    t_next = 2*apply(H_scaled, t[end]; cutoff=1e-8)
     bond_array[2] = maxlinkdim(t_next)
-
-    t_next = add(t_next, -t[end-1]; cutoff=1e-6)
+    t_next = add(t_next, -t[end-1]; cutoff=1e-8)
     bond_array[3] = maxlinkdim(t_next)
-    println(stderr, "Bond dimensions: $(bond_array)")
+    println(stderr, "Bond dimensions: ", bond_array)    
+    energy_truncation(H_scaled, 30, 1.0, t_next)
+
     push!(t, t_next)
 
     push!(μ, inner(ψ', A, t[end]))
@@ -283,7 +380,8 @@ Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 # calculate the dynamical correlator
 len_ω = 1000
 W = -E0 - E1
-ω = collect(range(0.0001, stop=2, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+ω = collect(range(0.005, stop=2, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+println("length of ψ: ",length(ψ0))
 i = 1
 N_min = 5
 χ = zeros(length(Sz), length(ω))

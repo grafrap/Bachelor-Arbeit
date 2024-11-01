@@ -49,8 +49,8 @@ using MPI
     end
 
     # calcualte the new Hamiltonian, with the projector. This will ensure that the ground state is orthogonal to the excited states
-    PMM = ITensors.ITensorMPS.ProjMPO_MPS(H, Ms; weight)
-    return ITensors.ITensorMPS.dmrg(MPISumTerm(PMM, MPI.COMM_WORLD), psi0, sweeps; kwargs...)
+    PMM = ITensorMPS.ProjMPO_MPS(H, Ms; weight)
+    return ITensorMPS.dmrg(MPISumTerm(PMM, MPI.COMM_WORLD), psi0, sweeps; kwargs...)
   end
 
 
@@ -67,7 +67,7 @@ using MPI
     
     if ψn===nothing 
       #ground state
-      Ed,ψd = ITensors.ITensorMPS.dmrg(H,ψi,sweeps0)
+      Ed,ψd = ITensorMPS.dmrg(H,ψi,sweeps0)
     else 
       #excited states
       Ed,ψd = dmrg(H,ψn,ψi,sweeps0;weight=w)
@@ -91,7 +91,7 @@ using MPI
 
       if ψn===nothing 
         #ground state
-        Ee,ψe = ITensors.ITensorMPS.dmrg(H,ψd,sweep1)
+        Ee,ψe = ITensorMPS.dmrg(H,ψd,sweep1)
       else
         #excited states
         Ee,ψe = dmrg(H,ψn,ψd,sweep1;weight=w)

@@ -77,7 +77,7 @@ end
 
 function ITensors.siteind(s::SpinSiteType, n::Integer; addtags="", kwargs...)
   sp = space(s; kwargs...)
-  return Index(sp, "S=$(tag(s)),Site,n=$n")
+  return Index(sp, "S=$(tag(s)),Site,n=$n, $addtags")
 end
 
 function ITensors.siteind(i::Index{Rational{Int}}; kwargs...)

@@ -24,10 +24,6 @@
 │   mpiexec = "mpiexec"
 │   preloads = Any[]
 └   preloads_env_switch = nothing
-sites[1]: (dim=3|id=137|"S=1//1,Site,n=1") <Out>
- 1: QN("Sz",-2) => 1
- 2: QN("Sz",0) => 1
- 3: QN("Sz",2) => 1
 E converged
 S² converged
 Sz(i) converged
