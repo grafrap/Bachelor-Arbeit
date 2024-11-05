@@ -4,23 +4,25 @@ using Printf
 # Julia code to read chi.txt as a matrix of floats
 
 function read_file_as_matrix(file_path)
-    matrix = []
-    open(file_path, "r") do file
-      content = strip(read(file, String), ['[', ']'])
+  matrix = []
+  open(file_path, "r") do file
+      # Read only the first line
+      first_line = readline(file)
+      content = strip(first_line, ['[', ']'])
       content = replace(content, ']' => "")
       rows = split(content, ';')
-        for row in rows
-            # Remove any trailing semicolon and whitespace, then split by spaces
-            float_values = split(strip(row))
-            # Convert each value to float and append to the matrix
-            push!(matrix, parse.(Float64, float_values))
-        end
-    end
-    return hcat(matrix...)
+      for row in rows
+          # Remove any trailing semicolon and whitespace, then split by spaces
+          float_values = split(strip(row))
+          # Convert each value to Float64 and append to the matrix
+          push!(matrix, parse.(Float64, float_values))
+      end
+  end
+  return hcat(matrix...)
 end
 
 # Read in the files
-file_path = "outputs/chi_values_18_500.txt"
+file_path = "outputs/daint_values_6000_om100.txt"
 matrix = read_file_as_matrix(file_path)
 # println(matrix)
 
@@ -43,7 +45,7 @@ matrix = matrix ./ max
 # end
 
 # Use the heatmap function to create the 2D histogram
-heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix", size=(800, 600), margin=10Plots.mm, color=:viridis)
+heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = 6000", size=(800, 600), margin=10Plots.mm, color=:viridis)
 
 # Save the plot to a file
-savefig("2d_histogram.png")
+savefig("2d_histogram_18_false_6000_100.png")

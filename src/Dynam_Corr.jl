@@ -43,22 +43,41 @@ function krylov_elements(H::MPO, ψ::MPS, N::Int)
   return H_red
 end
 
-function energy_truncation(H::MPO, N::Int, ϵ::Float64, t::MPS)
+function energy_truncation(Hamiltonian::MPO, N::Int, ϵ::Float64, t::MPS)
 
   println(stderr, "Calculating the energy truncation")
+  println(typeof(t))
+  println(typeof(t[1]))
+  println(t[1])
+  println(Hamiltonian[1])
 
-  for i in eachindex(t)
-    sites = siteinds(t[1])
-
+  for ind in eachindex(t)
+    ψ = t[ind] # size 2 x 3
+    
+    H = Hamiltonian[ind] # size 3 x 3 x 5
+    
+    # sites = inds(ψ) 
+    H_pow = Vector{ITensor}(undef, N)
+    H_pow[1] = H
+    for i in 2:N
+      H_pow[i] = H_pow[i-1] * H 
+    end
+    println(stderr, "H_pow: ", H_pow)
+    
     # Build the Krylov subspace
-    K = Vector{MPS}(undef, N)
-    K[1] = t
+    K = Vector{ITensor}(undef, N)
+    K[1] = ψ
     normalize!(K[1])
     for n in 2:N
-      K[n] = apply(H, K[n-1])
+      K[n] = H * K[n-1]
+      println("K[$n]: ", K[n])
+      normalize!(K[n])
+    end
+  
+    # Orthogonalize via Gram-Schmidt
+    for n in 2:N
       for i in 1:(n-1)
-        # Orthogonalize via Gram-Schmidt
-        K[n] -= inner(K[i], K[n]) * K[i]
+        K[n] -= contract(K[i], K[n]) * K[i]
       end
       normalize!(K[n])
     end
@@ -76,21 +95,32 @@ function energy_truncation(H::MPO, N::Int, ϵ::Float64, t::MPS)
     println(stderr, "Eigenvalues: ", λ)
 
     # Truncate the states
-    P = Operators.Identity_op(sites)
-
+    P = Diagonal(ones(N))
+    
     # Truncate the states by subtracting |v_i⟩⟨v_i|
     count = 0
     for i in 1:N
       if λ[i] > ϵ
         count += 1
-        # Construct |v_i⟩ as an MPS
-        for i in 1:N
-          P -= outer(v[:, i], v[:, i])
+        V = zeros(N, N)
+        # make the outer product of v_i with v_i and save this in V
+        for j in 1:N, k in 1:N
+          V[j, k] = v[j, i] * v[k, i]
         end
+        P -= V
       end
     end
 
-    t = apply(P, t)
+    # create an ITensor from the matrix P
+    i_index = Index(30, "i")
+    j_index = Index(30, "j")
+
+    P = ITensor(P, i_index, j_index)
+
+    # create an MPO from the ITensor P
+    P = MPO(P, sites)
+
+    t[ind] = apply(P, ψ)
     
     if count == 0
       println(stderr, "No states to truncate")
@@ -381,7 +411,6 @@ Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 len_ω = 1000
 W = -E0 - E1
 ω = collect(range(0.005, stop=2, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
-println("length of ψ: ",length(ψ0))
 i = 1
 N_min = 5
 χ = zeros(length(Sz), length(ω))
