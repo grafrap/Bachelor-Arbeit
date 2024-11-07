@@ -22,7 +22,7 @@ function read_file_as_matrix(file_path)
 end
 
 # Read in the files
-file_path = "outputs/daint_values_6000_om100.txt"
+file_path = "outputs/chi_values.txt"
 matrix = read_file_as_matrix(file_path)
 # println(matrix)
 
@@ -45,7 +45,7 @@ matrix = matrix ./ max
 # end
 
 # Use the heatmap function to create the 2D histogram
-heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = 6000", size=(800, 600), margin=10Plots.mm, color=:viridis)
+heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = 1000", size=(800, 600), margin=10Plots.mm, color=:viridis)
 
 # Save the plot to a file
-savefig("2d_histogram_18_false_6000_100.png")
+savefig("histograms/2d_histogram_10_false_400.png")
