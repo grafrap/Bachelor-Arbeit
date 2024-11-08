@@ -83,7 +83,8 @@ function Chebyshev_expansion(x::Vector, N::Int)
   return T
 end
 
-function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3, abstol::Float64=1e-5)
+# TODO: add cutoff value
+function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3)
   #=
   Implements the dynamical spin correlator for a vector of frequencies
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
@@ -106,6 +107,7 @@ function Dynamic_corrolator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   W = -E0 - E1 # W* = -E0 + E1
   W_ = 1 - 0.5*ϵ # W', scaled W
   a = W/(2*W_)
+  # TODO: can i use here the add function from ITensors.jl? Maybe use autompo or cutoff (to test)
   H_scaled = 1/a * (H - E0*I) - W_*I
   ω_ = ω./a .- W_ # ω', scaled ω
   Δω = ω[2] - ω[1] # frequency step for integration
@@ -214,8 +216,7 @@ f = h5open("outputs/operators_data.h5", "r")
 sites = read(f, "sites", IndexSet)
 I = Operators.Identity_op(sites)
 Sz = [Operators.Szi_op(i, sites) for i in 1:N]
-
-
+close(f)
 
 # calculate the dynamical correlator
 len_ω = parse(Int, ARGS[1])
@@ -226,7 +227,7 @@ i = 1
 # main loop
 @threads for i in eachindex(Sz)
   println(stderr, "Calculating χ for Sz[$i]")
-  χ[i, :] = Dynamic_corrolator(ψ0, H, Sz[i], i, I, E0, E1, ω)
+  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω)
 end
 
 # write the results to a file for the plot

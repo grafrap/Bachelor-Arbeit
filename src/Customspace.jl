@@ -5,24 +5,19 @@ using LinearAlgebra
 export SpinSiteType
 
 struct SpinSiteType
+  #=
+    Generic type for a spin site with a given S
+  =#
   S::Rational{Int} 
 end
 
-# function tag(s::SpinSiteType) 
-#   # return for 1//1 1 and for 3//2 3/2
-#   double = s.S * 2
-#   integ = Int(numerator(double))
-#   if integ % 2 == 0
-#     flo = Int(integ/2)
-#     return string(flo)
-#   else
-#     return "$integ/2"
-#   end
-# end
 tag(s::SpinSiteType) = s.S
 
 
 function generate_spin_states(S::Rational{Int})
+  #=
+    Returns an array of the spin states for a given S.
+  =#
   states = []
   for m in -S:S
     if m == 0
@@ -37,6 +32,9 @@ function generate_spin_states(S::Rational{Int})
 end
 
 function state_to_index(S::Rational{Int})
+  #=
+    Returns a dictionary mapping the state names to their corresponding index values for a given S.
+  =#
   states = generate_spin_states(S)
   state_index_map = Dict{String, Int}()
   for (i, state) in enumerate(states)
@@ -46,6 +44,9 @@ function state_to_index(S::Rational{Int})
 end
 
 function state_to_index(s::Index)
+  #=
+    Returns a dictionary mapping the state names to their corresponding index values for a given Index s.
+  =#
   index_str = string(s)
   S = match(r"S=(\d+//\d+)", index_str).captures[1]
   state_index_map = state_to_index(parse(Rational{Int}, S))
@@ -53,17 +54,23 @@ function state_to_index(s::Index)
 end
 
 function ITensors.state(s::SpinSiteType, n::Int)
-  println(stderr, "state was called with n")
+  #=
+    Return an IndexVal corresponding to the state n for the SpinSiteType s.
+  =#
   return IndexVal(n, siteind(s))
 end
 
 function ITensors.state(s::SpinSiteType, str::String)
-  println(stderr, "state was called with str")
+  #=
+    Return an IndexVal corresponding to the state named str for the SpinSiteType s.
+  =#
   IndexVal(state_to_index(s.S)[str], siteind(s))
 end
 
 function ITensors.state(s::Index, str::String)
-  println(stderr, "state was called with index and str")
+  #=
+    Return an ITensor corresponding to the state named str for the Index s. The returned ITensor will have s as its only index.
+  =#
   state_index_map = state_to_index(s)
   arr = zeros(Int, length(state_index_map))
   arr[state_index_map[str]] = 1
@@ -71,30 +78,48 @@ function ITensors.state(s::Index, str::String)
 end
 
 function ITensors.siteind(s::SpinSiteType; addtags="", kwargs...)
+  #=
+    Returns the site index for a given site type
+  =#
   sp = space(s; kwargs...)
   return Index(sp, "Site,S=$(tag(s)), $addtags")
 end
 
 function ITensors.siteind(s::SpinSiteType, n::Integer; addtags="", kwargs...)
+  #=
+    Returns the site index for a given site type and site number
+  =#
   sp = space(s; kwargs...)
   return Index(sp, "S=$(tag(s)),Site,n=$n, $addtags")
 end
 
 function ITensors.siteind(i::Index{Rational{Int}}; kwargs...)
+  #=
+    Returns the site index for a given site type
+  =#
   S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(i)).captures[1])
   return siteind(SpinSiteType(S); kwargs...)
 end  
 
 function ITensors.siteind(i::Index{Rational{Int}}, n::Integer; kwargs...)
+  #=
+    Returns the site index for a given site type and site number
+  =#
   S = parse(Rational{Int}, match(r"S=(\d+//\d+)", string(i)).captures[1])
   return siteind(SpinSiteType(S), n; kwargs...)
 end 
 
 function ITensors.siteinds(s::SpinSiteType, N::Int; kwargs...)
+  #=
+    Returns an array of site indices for an array of given site types
+  =#
   return [siteind(s, n; kwargs...) for n in 1:N]
 end
 
 function ITensors.space(s::SpinSiteType; conserve_qns=false, conserve_sz=conserve_qns, qnname_sz="Sz")
+  #=
+    Returns the quantum number space for a given site
+  =#
   if conserve_sz
     QNarray = Pair{QN, Int}[]
     for m in -s.S:s.S
@@ -106,6 +131,9 @@ function ITensors.space(s::SpinSiteType; conserve_qns=false, conserve_sz=conserv
 end
 
 function op(::OpName"Sz", s::SpinSiteType)
+  #=
+    Returns the Sz operator for a given site
+  =#
   S = s.S
   Sz = zeros(Float64, (Int(2 * S + 1), Int(2 * S + 1)))
   for i in -S:S
@@ -115,6 +143,9 @@ function op(::OpName"Sz", s::SpinSiteType)
 end
 
 function op(::OpName"S+", s::SpinSiteType)
+  #=
+    Returns the S+ operator for a given site
+  =#
   S = s.S
   d = Int(2 * S + 1)
   Sp = zeros(Float64, d, d)
@@ -125,10 +156,16 @@ function op(::OpName"S+", s::SpinSiteType)
 end
 
 function op(::OpName"S-", s::SpinSiteType)
+  #=
+    Returns the S- operator for a given site
+  =#
   return adjoint(op(OpName("S+"), s))
 end
 
 function op(::OpName"Id", s::SpinSiteType)
+  #=
+    Returns the identity operator for a given site
+  =#
   S = s.S
   d = Int(2 * S + 1)
   return Diagonal(ones(d))
