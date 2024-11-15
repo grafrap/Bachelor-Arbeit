@@ -193,7 +193,7 @@ end
 
 function ITensors.siteinds(str::String, N::Int; kwargs...)
   if startswith(str, "S=")
-    S_str = match(r"S=(\d+//\d+)", str).captures[1]
+    S_str = match(r"S=(\d+//\d+)", str)
 
     num, denom = split(S_str, "//")
     numerator = parse(Int, num)
