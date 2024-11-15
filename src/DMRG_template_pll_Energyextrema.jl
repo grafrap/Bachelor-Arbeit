@@ -205,7 +205,7 @@ if rank == 0
 
   # Print the operators to HDF5 file
   if print_HDF5
-    h5file = h5open("outputs/operators_data.h5", "w")
+    h5file = h5open("operators_data.h5", "w")
     write(h5file, "sites", sites)
     close(h5file)
   end
@@ -215,7 +215,7 @@ if rank == 0
 
   # Print the Hamiltonian to HDF5 file
   if print_HDF5
-    h5file = h5open("outputs/H_data.h5", "w")
+    h5file = h5open("H_data.h5", "w")
     write(h5file, "H", MPO(H, sites))
     close(h5file)
   end
@@ -307,28 +307,27 @@ if rank == 0
 
   mkpath("outputs")
 
-  fw = open("outputs/Szi_Sz_pll=$(Sz).txt", "w")
+  fw = open("Szi_Sz_pll=$(Sz).txt", "w")
   # outputs
-  write(fw, "List of E:\n")
-  write(fw, string(En), "\n")
-  write(fw, "\n")
-  write(fw, "List of S²:\n")
-  write(fw, string(S2n), "\n")
-  write(fw, "\n")
-  write(fw, "List of Sz(i):\n")
-  write(fw, string(Szin), "\n")
-  write(fw, "----------\n\n")
-  write(fw,"total time = "* string(time) * "\n")
-  close(fw)
+  println("List of E:")
+  println(En)
+  println()
+  println("List of S²:")
+  println(S2n)
+  println()
+  println("List of Sz(i):")
+  println(Szin)
+  println("----------")
+  println()
+  println("total time = ", time)
 
-  @show time
   
   if print_HDF5
   
     println(stderr, "Printing to HDF5 file")
 
     # Open an HDF5 file for writing
-    h5file = h5open("outputs/psin_data.h5", "w")
+    h5file = h5open("psin_data.h5", "w")
     
     # Write the MPS data to the HDF5 file
     for (i, psi) in enumerate(ψn)
