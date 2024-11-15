@@ -236,6 +236,7 @@ else
   nexc = nothing
   Nsites = nothing
   print_HDF5 = nothing
+  maximal_energy = nothing
 end
 
 # Broadcast the variables from rank 0 to all processes
@@ -249,6 +250,7 @@ Hpart = ITensorParallel.bcast(Hpart, 0, MPI.COMM_WORLD)
 nexc = ITensorParallel.bcast(nexc, 0, MPI.COMM_WORLD)
 Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
 print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
+maximal_energy = ITensorParallel.bcast(maximal_energy, 0, MPI.COMM_WORLD)
 
 # DMRG precision parameters
 precE = 1E-6
