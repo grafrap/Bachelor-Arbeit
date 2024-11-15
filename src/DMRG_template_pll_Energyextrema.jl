@@ -305,9 +305,6 @@ if rank == 0
   
   time = Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now()) - Dates.DateTime(start_time)))
 
-  mkpath("outputs")
-
-  fw = open("Szi_Sz_pll=$(Sz).txt", "w")
   # outputs
   println("List of E:")
   println(En)
