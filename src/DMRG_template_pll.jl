@@ -41,8 +41,7 @@ function spinstate_sNSz(s,N,Sz;random="yes")
        more on new s: https://github.com/ITensor/ITensors.jl/blob/main/src/lib/SiteTypes/src/sitetypes/spinhalf.jl
   =#
   # In total adds up to Sz, with available states from -s, -s+1, ..., s
-    # TODO: Generalize this function for many s
-    # general s
+  # general s
   if abs(Sz) > s*N
     throw(ArgumentError("Check s, N and Sz"))
   end

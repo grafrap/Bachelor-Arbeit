@@ -9,7 +9,9 @@ using Dates
 lib_dir = "."
 include(lib_dir*"/Operators.jl")
 include(lib_dir*"/Customspace.jl")
+include(lib_dir*"/Hamiltonian.jl")
 import .Operators
+import .Hamiltonian
 
 
 function Jackson_dampening(N::Int)
@@ -83,8 +85,7 @@ function Chebyshev_expansion(x::Vector, N::Int)
   return T
 end
 
-# TODO: add cutoff value
-function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector; N_min::Int=3)
+function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector, sites, J; N_min::Int=3, cutoff::Float64=1e-8)
   #=
   Implements the dynamical spin correlator for a vector of frequencies
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
@@ -97,18 +98,25 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   end
 
   for idx in 1:length(ω)
-    @assert ω[idx] < W "ω must be less than W"
+    @assert ω[idx] < -E0 - E1 "ω must be less than W"
     @assert ω[idx] > 0 "ω must be positive"
   end
   
   # parameters
-  N_max = 1000
   ϵ = 0.025
   W = -E0 - E1 # W* = -E0 + E1
   W_ = 1 - 0.5*ϵ # W', scaled W
   a = W/(2*W_)
+  L = length(ψ)
+  N_max = Int(4 * 4 * L * ceil(L/2 - 2))
+  if N_max < 800
+    N_max = 800
+  end
+  println(stderr, "N_max = $N_max")
   # TODO: can i use here the add function from ITensors.jl? Maybe use autompo or cutoff (to test)
-  H_scaled = 1/a * (H - E0*I) - W_*I
+  # H_scaled = 1/a * (H - E0*I) - W_*I
+  H_scaled = add(1/a * add(H, -E0*I; cutoff=cutoff), -W_*I; cutoff=cutoff)
+  # H_scaled = Hamiltonian.Scaled_Hamiltonian(a, E0, W_, sites, J) # add either sites or I here aswell
   ω_ = ω./a .- W_ # ω', scaled ω
   Δω = ω[2] - ω[1] # frequency step for integration
   sum_old = 0.0 # integration sum
@@ -145,8 +153,8 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
 
     # calculate the Chebyshev vectors for the new N_min
     # It's done this way to make use of cutoff, so that the bond dimensions don't explode
-    t_next = 2*apply(H_scaled, t[end]; cutoff=1e-8)
-    t_next = add(t_next, -t[end-1]; cutoff=1e-8)
+    t_next = 2*apply(H_scaled, t[end]; cutoff=cutoff)
+    t_next = add(t_next, -t[end-1]; cutoff=cutoff)
 
     push!(t, t_next)
     push!(μ, inner(ψ', A, t[end]))
@@ -221,13 +229,22 @@ close(f)
 # calculate the dynamical correlator
 len_ω = parse(Int, ARGS[1])
 ω = collect(range(0.0001, stop=3, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
-i = 1
 χ = zeros(length(Sz), length(ω))
+J1 = 1
+J = zeros(N,N)
+for i in 1:N-1
+  J[i,i+1] = J1 + (-1)^i * 0.03 * J1
+  J[i+1,i] = J1 + (-1)^i * 0.03 * J1
+  if i != N-1
+    J[i,i+2] = 0.19 *J1
+    J[i+2,i] = 0.19 *J1
+  end
+end
 
 # main loop
 @threads for i in eachindex(Sz)
   println(stderr, "Calculating χ for Sz[$i]")
-  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω)
+  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, sites, J)
 end
 
 # write the results to a file for the plot
