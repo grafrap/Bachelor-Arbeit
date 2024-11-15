@@ -48,4 +48,4 @@ matrix = matrix ./ max
 heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = 1000", size=(800, 600), margin=10Plots.mm, color=:viridis)
 
 # Save the plot to a file
-savefig("histograms/2d_histogram_10_false_400.png")
+savefig("histograms/2d_histogram_8_false_deltatest_1000.png")

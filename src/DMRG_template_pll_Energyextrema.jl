@@ -45,8 +45,7 @@ function spinstate_sNSz(s,N,Sz;random="yes")
       Instructions on new sitetype: https://itensor.github.io/ITensors.jl/stable/examples/Physics.html
   =#
   # In total adds up to Sz, with available states from -s, -s+1, ..., s
-    # TODO: Generalize this function for many s
-    # general s
+  # general s
   # Check if Sz is valid
   if abs(Sz) > s * N
     @error "Check s, N and Sz"
