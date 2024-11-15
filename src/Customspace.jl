@@ -192,12 +192,19 @@ end
 # end
 
 function ITensors.siteinds(str::String, N::Int; kwargs...)
+  println(stderr, "siteinds: $str")
   if startswith(str, "S=")
-    S_str = match(r"S=(\d+//\d+)", str)
+    S_str = replace(str, "S=" => "")
 
-    num, denom = split(S_str, "//")
-    numerator = parse(Int, num)
-    denominator = parse(Int, denom)
+    spin_float = parse(Float64, S_str)
+
+    numerator = Int(round(spin_float*2))
+    denominator = 2
+
+    if spin_float == round(spin_float)
+      numerator = Int(spin_float)
+      denominator = 1
+    end
 
     S = numerator // denominator
     return siteinds(SpinSiteType(S), N; kwargs...)

@@ -186,7 +186,7 @@ if rank == 0
   if (2*s)%2 == 0
     sites = siteinds("S="*string(Int(s)),Nsites;conserve_sz=conserve_symmetry)
   elseif (2*s)%2 == 1
-    sites = siteinds("S="*string(Int(2*s))*"/2",Nsites;conserve_sz=conserve_symmetry)
+    sites = siteinds("S="*string(float(s)),Nsites;conserve_sz=conserve_symmetry)
   else
     @error "Check s"
     exit(1)
