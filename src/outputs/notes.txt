@@ -7998,3 +7998,5 @@ N = 999	 i = 4	 Error = 0.003015047642809243	 sum_χ = 0.4417205931237495	 Δsum
 N = 1000	 i = 4	 Error = 0.0030259930384577416	 sum_χ = 0.4413967872386701	 Δsum = 0.000323805885079409	 Δt = 59 milliseconds
 N = 1001	 i = 4	 Error = 0.003036913039865752	 sum_χ = 0.44107235105945225	 Δsum = 0.0003244361792178463	 Δt = 58 milliseconds
 N_min > N_max
+
+https://aiida.readthedocs.io/projects/aiida-core/en/stable/howto/plugin_codes.html#how-to-plugin-codes

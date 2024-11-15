@@ -164,7 +164,7 @@ if rank == 0
     
   s, N, J1, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
   println(stderr, "Parameters:")
-  println(stderr, "s = $s, N = $N, J = $J1, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = maximal_energy")
+  println(stderr, "s = $s, N = $N, J = $J1, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
   # create the J matrix, with J1 on the off-diagonal TODO: generalize for all J matrices
   J = zeros(N,N)
   for i in 1:N-1
