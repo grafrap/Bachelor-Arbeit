@@ -31,6 +31,46 @@ import .Hamiltonian
 import .DMRGSweeps
 # run this script with: mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 0 true true > outputs/output.txt (julia 1.9)
 # run this script with: mpirun -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 0 false true > outputs/output.txt (julia 1.10/1.11)
+# Function to parse arguments
+function parse_arguments()
+  input_args = []
+  if length(ARGS) == 0
+      # Read a line from stdin
+      println("No command-line arguments provided. Reading from stdin...")
+      try
+          input_line = readline(stdin)
+          # Remove surrounding quotes if present
+          input_line = strip(input_line, ['"', '\''])
+          # Split the input line into arguments
+          input_args = split(input_line)
+          println("Arguments read from stdin: ", input_args)
+      catch e
+          @error "Failed to read from stdin." exception=(e, catch_backtrace())
+          exit(1)
+      end
+  else
+      input_args = ARGS
+  end
+
+  if length(input_args) != 8
+      println("Usage: julia DMRG_template_pll_Energyextrema.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5> <maximal_energy>")
+      exit(1)
+  end
+
+  # Parse arguments
+  s = parse(Float64, input_args[1])
+  N = parse(Int, input_args[2])
+  J = parse(Float64, input_args[3])
+  Sz = parse(Int, input_args[4])
+  nexc = parse(Int, input_args[5])
+  conserve_symmetry = parse(Bool, input_args[6])
+  print_HDF5 = parse(Bool, input_args[7])
+  maximal_energy = parse(Bool, input_args[8])
+
+  return (s, N, J, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy)
+end
+
+
 
 # functions #
 function spinstate_sNSz(s,N,Sz;random="yes")
@@ -122,18 +162,10 @@ nprocs = MPI.Comm_size(MPI.COMM_WORLD)
 
 # Get setup, only rank 0 will do this
 if rank == 0
-
-  # Check if the correct number of arguments is provided
-  if length(ARGS) < 7
-    println(stderr, "Usage: julia DMRG_template.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5>")
-    exit(1)
-  end
-
-  # physical parameters
-  s = parse(Float64, ARGS[1])
-  N = parse(Int, ARGS[2])
-  J1 = parse(Float64, ARGS[3])
-  
+    
+  s, N, J1, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
+  println("Parameters:")
+  println(stderr, "s = $s, N = $N, J = $J1, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = maximal_energy")
   # create the J matrix, with J1 on the off-diagonal TODO: generalize for all J matrices
   J = zeros(N,N)
   for i in 1:N-1
@@ -145,24 +177,6 @@ if rank == 0
     end
   end
   
-  # other parameters
-  Sz = parse(Float64, ARGS[4]) # Sz = 1/2 or 0 for now
-  # @assert Sz == 1/2 || Sz == 0 || Sz == 1 "Sz must be 1/2 or 0"
-  nexc = parse(Int, ARGS[5])
-  
-  conserve_symmetry, print_HDF5 = true, true
-  try
-    conserve_symmetry = parse(Bool, ARGS[6])
-  catch e
-    throw(ArgumentError("Failed to parse conserve_symmetry as Bool: $e"))
-  end
-
-  try
-    print_HDF5 = parse(Bool, ARGS[7])
-  catch e
-    throw(ArgumentError("Failed to parse print_HDF5 as Bool: $e"))
-  end
-
   
   # TODO: check if there are more symmetry conservation options
   # https://github.com/ITensor/ITensors.jl/blob/f37d4a5dd8a7376d0daedd74bc326cb6f9653b00/src/lib/SiteTypes/src/sitetypes/spinhalf.jl#L2-L13
@@ -255,16 +269,30 @@ E0, ψ0 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, pre
 En = [E0]
 ψn = [ψ0]
 
-# calculate the highest energy state with -H 
-MPI.Barrier(MPI.COMM_WORLD)
-mpo_sum_term = MPISumTerm(MPO(-Hpart[rank+1], sites), MPI.COMM_WORLD)
-MPI.Barrier(MPI.COMM_WORLD)
+# excited states
+for _ in 1:nexc
+  MPI.Barrier(MPI.COMM_WORLD)
+  mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
+  MPI.Barrier(MPI.COMM_WORLD)
+  E,ψ = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term,ψi,precE,precS2,precSzi,S2,Szi,ψn=ψn,w=w)
+  push!(En,E)
+  push!(ψn,ψ)
+end
 
-# highest energy state
-E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
 
-# save highest energy state
-En = [E0, E1]
+if maximal_energy
+  # calculate the highest energy state with -H 
+  MPI.Barrier(MPI.COMM_WORLD)
+  mpo_sum_term = MPISumTerm(MPO(-Hpart[rank+1], sites), MPI.COMM_WORLD)
+  MPI.Barrier(MPI.COMM_WORLD)
+
+  # highest energy state
+  E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
+
+  # save highest energy state
+  push!(En, E1)
+  push!(ψn, ψ1)
+end
 
 
 if rank == 0

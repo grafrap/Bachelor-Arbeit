@@ -193,7 +193,13 @@ end
 
 function ITensors.siteinds(str::String, N::Int; kwargs...)
   if startswith(str, "S=")
-    S = parse(Rational{Int}, split(str, "=")[2])
+    S_str = match(r"S=(\d+//\d+)", str).captures[1]
+
+    num, denom = split(S_str, "//")
+    numerator = parse(Int, num)
+    denominator = parse(Int, denom)
+
+    S = numerator // denominator
     return siteinds(SpinSiteType(S), N; kwargs...)
   else
     error("Invalid siteind string: $str")
