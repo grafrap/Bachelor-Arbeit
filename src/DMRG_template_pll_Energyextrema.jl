@@ -46,7 +46,7 @@ function parse_arguments()
           println("Arguments read from stdin: ", input_args)
       catch e
           @error "Failed to read from stdin." exception=(e, catch_backtrace())
-          exit(1)
+          MPI.Abort(MPI.COMM_WORLD, 1)
       end
   else
       input_args = ARGS
@@ -54,7 +54,7 @@ function parse_arguments()
 
   if length(input_args) != 8
       println("Usage: julia DMRG_template_pll_Energyextrema.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5> <maximal_energy>")
-      exit(1)
+      MPI.Abort(MPI.COMM_WORLD, 1)
   end
 
   # Parse arguments
@@ -89,12 +89,12 @@ function spinstate_sNSz(s,N,Sz;random="yes")
   # Check if Sz is valid
   if abs(Sz) > s * N
     @error "Check s, N and Sz"
-    exit(1)
+    MPI.Abort(MPI.COMM_WORLD, 1)
   end
   # Check if Sz is reachable with the given s
   if (s*N) % 1 != Sz % 1
     @error "Check s, N and Sz"
-    exit(1)
+    MPI.Abort(MPI.COMM_WORLD, 1)
   end
 
   s = Rational(s)
@@ -189,7 +189,7 @@ if rank == 0
     sites = siteinds("S="*string(float(s)),Nsites;conserve_sz=conserve_symmetry)
   else
     @error "Check s"
-    exit(1)
+    MPI.Abort(MPI.COMM_WORLD, 1)
   end
   
   # initial state
