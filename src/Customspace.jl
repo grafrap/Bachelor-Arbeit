@@ -192,7 +192,6 @@ end
 # end
 
 function ITensors.siteinds(str::String, N::Int; kwargs...)
-  println(stderr, "siteinds: $str")
   if startswith(str, "S=")
     S_str = replace(str, "S=" => "")
 
