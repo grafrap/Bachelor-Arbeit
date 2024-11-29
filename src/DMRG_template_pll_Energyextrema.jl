@@ -44,7 +44,7 @@ function parse_arguments()
       input_line = strip(input_line, ['"', '\''])
       # Split the input line into tokens
       tokens = split(input_line)
-      println("Arguments read from input file: ", tokens)
+      println(stderr, "Arguments read from input file: ", tokens)
     catch e
       @error "Failed to read from stdin." exception=(e, catch_backtrace())
       MPI.Abort(MPI.COMM_WORLD, 1)
@@ -95,6 +95,7 @@ function parse_arguments()
   # Initialize J as Union{Float64, Matrix{Float64}}
   J = nothing
 
+  # Check if J is a matrix and parse it
   if startswith(J_input, "[") && endswith(J_input, "]")
     # Parse J as a matrix
     J_content = J_input[2:end-1]  # Remove surrounding brackets
@@ -124,6 +125,8 @@ function parse_arguments()
       MPI.Abort(MPI.COMM_WORLD, 1)
     end
   end
+
+  # Parse the remaining arguments
   if length(input_args) == 7
     Sz = nothing
     nexc = parse(Int, input_args[4])
@@ -138,9 +141,15 @@ function parse_arguments()
     maximal_energy = parse(Bool, input_args[8])
   end
 
+  # Check if nothing in Sz is valid
   if Sz === nothing && conserve_symmetry == true
     @error "Sz must be provided when conserve_symmetry is true."
     MPI.Abort(MPI.COMM_WORLD, 1)
+  end
+
+  # Set Sz to nothing, because it is not needed
+  if conserve_symmetry == false
+    Sz = nothing
   end
 
   return (s, N, J, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy)
@@ -149,10 +158,27 @@ end
 # functions #
 function spinstate_sNSz(s, N, Sz; random="yes")
   #=
-      function that creates a spin state from s, N, Sz
+      function that creates a spin state from s, N, Sz (Sz only if conserve_symmetry is true)
+      In total states add up to Sz, with available states from -s, -s+1, ..., s
   =#
-  # In total adds up to Sz, with available states from -s, -s+1, ..., s
-  # general s
+
+  # Get the possible states for the given spin value
+  s = Rational(s)
+  possible_states = generate_spin_states(s)
+  state_index_map = state_to_index(s)
+  state = fill(possible_states[1], N)
+  index_vector = Vector{Int}(undef, length(state))
+
+  # initialize index vector to some random values if Sz is not provided (i.e. no symmetry conservation)
+  if Sz === nothing
+    random_ind = rand(1:Int(2*s+1), N)
+    for i in 1:N
+      state[i] = possible_states[random_ind[i]]
+      index_vector[i] = state_index_map[state[i]]
+    end
+    return index_vector
+  end
+
   # Check if Sz is valid
   if abs(Sz) > s * N
     @error "Check s, N and Sz"
@@ -164,12 +190,8 @@ function spinstate_sNSz(s, N, Sz; random="yes")
     MPI.Abort(MPI.COMM_WORLD, 1)
   end
 
-  s = Rational(s)
-  # Get the possible states for the given spin value
-  possible_states = generate_spin_states(s)
-  state = fill(possible_states[1], N)
+  # Initialize the sum of the states to compare with Sz
   sum = N * -s
-  state_index_map = state_to_index(s)
 
   # Fill the state array with the correct states
   while sum < Sz
@@ -200,7 +222,6 @@ function spinstate_sNSz(s, N, Sz; random="yes")
     shuffle!(state)
   end
 
-  index_vector = Vector{Int}(undef, length(state))
   for i in eachindex(state)
     index_vector[i] = state_index_map[state[i]]
   end
@@ -230,8 +251,8 @@ function main()
   if rank == 0
 
     s, N, J_input, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
-    println(stderr, "Parameters:")
-    println(stderr, "s = $s, N = $N, J = $J_input, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
+    println("Parameters:")
+    println("s = $s, N = $N, J = $J_input, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
 
     # Determine if J is scalar or matrix
     if typeof(J_input) == Float64
@@ -346,23 +367,32 @@ function main()
 
   # excited states
   for excit in 1:nexc
-    println(stderr, "Calculating excited state $excit")
+    if rank == 0
+      println("Calculating excited state $excit")
+    end
+    # sum term for parallel DMRG
     MPI.Barrier(MPI.COMM_WORLD)
     mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
     MPI.Barrier(MPI.COMM_WORLD)
+
+    # excited state calculation
     E, ψ = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi, ψn=ψn, w=w)
+    
+    # save excited state
     push!(En, E)
     push!(ψn, ψ)
   end
 
+  # calculate the highest energy state with -H 
   if maximal_energy
-    # calculate the highest energy state with -H 
-    println(stderr, "Calculating highest energy state")
+    if rank == 0
+      println("Calculating highest energy state")
+    end
     MPI.Barrier(MPI.COMM_WORLD)
     mpo_sum_term = MPISumTerm(MPO(-Hpart[rank+1], sites), MPI.COMM_WORLD)
     MPI.Barrier(MPI.COMM_WORLD)
 
-    # highest energy state
+    # highest energy state calculation
     E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
 
     # save highest energy state
