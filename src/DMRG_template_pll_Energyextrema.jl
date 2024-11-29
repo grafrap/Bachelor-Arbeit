@@ -1,4 +1,4 @@
-# command for this script: mpiexecjl -n 4 julia DMRG_template_pll.jl 0.5 100 0.4 0 1 true true > outputs/output.txt 2> outputs/error.txt
+# command for this script: mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 100 0.4 0 1 true true > outputs/output.txt 2> outputs/error.txt
 ###############################################################################
 # packages #
 ###############################################################################
@@ -18,7 +18,6 @@ using Random
 using HDF5
 using InteractiveUtils
 
-
 BLAS.set_num_threads(1)
 
 lib_dir = "."
@@ -31,58 +30,126 @@ import .Hamiltonian
 import .DMRGSweeps
 # run this script with: mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 0 true true > outputs/output.txt (julia 1.9)
 # run this script with: mpirun -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 0 false true > outputs/output.txt (julia 1.10/1.11)
+
 # Function to parse arguments
 function parse_arguments()
   input_args = []
+  
   if length(ARGS) == 0
-      # Read a line from stdin
-      println("No command-line arguments provided. Reading from stdin...")
-      try
-          input_line = readline(stdin)
-          # Remove surrounding quotes if present
-          input_line = strip(input_line, ['"', '\''])
-          # Split the input line into arguments
-          input_args = split(input_line)
-          println("Arguments read from stdin: ", input_args)
-      catch e
-          @error "Failed to read from stdin." exception=(e, catch_backtrace())
-          MPI.Abort(MPI.COMM_WORLD, 1)
-      end
+    # Read a line from stdin
+    println("No command-line arguments provided. Reading from input file...")
+    try
+      input_line = readline(stdin)
+      # Remove surrounding quotes if present
+      input_line = strip(input_line, ['"', '\''])
+      # Split the input line into tokens
+      tokens = split(input_line)
+      println("Arguments read from input file: ", tokens)
+    catch e
+      @error "Failed to read from stdin." exception=(e, catch_backtrace())
+      MPI.Abort(MPI.COMM_WORLD, 1)
+    end
   else
-      input_args = ARGS
+    tokens = ARGS
   end
 
-  if length(input_args) != 8
-      println("Usage: julia DMRG_template_pll_Energyextrema.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5> <maximal_energy>")
-      MPI.Abort(MPI.COMM_WORLD, 1)
+  # Process tokens to handle the J matrix as a single argument
+  i = 1
+  while i <= length(tokens)
+    token = tokens[i]
+    if startswith(token, "[")
+      # Start collecting J matrix tokens
+      j_tokens = [token]
+      i += 1
+      while i <= length(tokens) && !endswith(tokens[i], "]")
+        push!(j_tokens, tokens[i])
+        i += 1
+      end
+      if i <= length(tokens)
+        push!(j_tokens, tokens[i])  # Add the closing bracket
+        i += 1
+      else
+        @error "J matrix not properly closed with ']'."
+        MPI.Abort(MPI.COMM_WORLD, 1)
+      end
+      # Join all J tokens into one string
+      J_str = join(j_tokens, " ")
+      push!(input_args, J_str)
+    else
+      # Regular argument
+      push!(input_args, token)
+      i += 1
+    end
+  end
+
+  if length(input_args) != 7 && length(input_args) != 8
+    println("Usage: julia DMRG_template_pll_Energyextrema.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5> <maximal_energy>")
+    MPI.Abort(MPI.COMM_WORLD, 1)
   end
 
   # Parse arguments
   s = parse(Float64, input_args[1])
   N = parse(Int, input_args[2])
-  J = parse(Float64, input_args[3])
-  Sz = parse(Float64, input_args[4])
-  nexc = parse(Int, input_args[5])
-  conserve_symmetry = parse(Bool, input_args[6])
-  print_HDF5 = parse(Bool, input_args[7])
-  maximal_energy = parse(Bool, input_args[8])
+  J_input = input_args[3]
+  
+  # Initialize J as Union{Float64, Matrix{Float64}}
+  J = nothing
+
+  if startswith(J_input, "[") && endswith(J_input, "]")
+    # Parse J as a matrix
+    J_content = J_input[2:end-1]  # Remove surrounding brackets
+    rows = split(J_content, ";")
+    try
+      # Parse each row into a vector of Float64
+      J_matrix = [parse.(Float64, split(strip(row))) for row in rows]
+      # Ensure all rows have the same number of columns
+      row_lengths = [length(row) for row in J_matrix]
+      if length(unique(row_lengths)) != 1
+        @error "All rows in J matrix must have the same number of columns."
+        MPI.Abort(MPI.COMM_WORLD, 1)
+      end
+      # Convert arrays of arrays to a 2D Matrix
+      J = reduce(vcat, J_matrix)
+      J = reshape(J, row_lengths[1], length(J_matrix))
+    catch e
+      @error "Failed to parse J matrix: $e"
+      MPI.Abort(MPI.COMM_WORLD, 1)
+    end
+  else
+    # Parse J as a scalar
+    try
+      J = parse(Float64, J_input)
+    catch e
+      @error "Failed to parse J as a Float64: $e"
+      MPI.Abort(MPI.COMM_WORLD, 1)
+    end
+  end
+  if length(input_args) == 7
+    Sz = nothing
+    nexc = parse(Int, input_args[4])
+    conserve_symmetry = parse(Bool, input_args[5])
+    print_HDF5 = parse(Bool, input_args[6])
+    maximal_energy = parse(Bool, input_args[7])
+  else
+    Sz = parse(Float64, input_args[4])
+    nexc = parse(Int, input_args[5])
+    conserve_symmetry = parse(Bool, input_args[6])
+    print_HDF5 = parse(Bool, input_args[7])
+    maximal_energy = parse(Bool, input_args[8])
+  end
+
+  if Sz === nothing && conserve_symmetry == true
+    @error "Sz must be provided when conserve_symmetry is true."
+    MPI.Abort(MPI.COMM_WORLD, 1)
+  end
 
   return (s, N, J, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy)
 end
 
-
-
 # functions #
-function spinstate_sNSz(s,N,Sz;random="yes")
+function spinstate_sNSz(s, N, Sz; random="yes")
   #=
-      function that creates a spin state from s,N,Sz
-
-      Notes:
-      - as of now, only s=1/2 and s=1 are possible
-      - for s=1, the state created has minimal nr of "Z0"
-      more info on the available spin states: https://itensor.github.io/ITensors.jl/dev/IncludedSiteTypes.html
-      more on new s: https://github.com/ITensor/ITensors.jl/blob/main/src/lib/SiteTypes/src/sitetypes/spinhalf.jl
-      Instructions on new sitetype: https://itensor.github.io/ITensors.jl/stable/examples/Physics.html
+      function that creates a spin state from s, N, Sz
   =#
   # In total adds up to Sz, with available states from -s, -s+1, ..., s
   # general s
@@ -92,7 +159,7 @@ function spinstate_sNSz(s,N,Sz;random="yes")
     MPI.Abort(MPI.COMM_WORLD, 1)
   end
   # Check if Sz is reachable with the given s
-  if (s*N) % 1 != Sz % 1
+  if (s * N) % 1 != Sz % 1
     @error "Check s, N and Sz"
     MPI.Abort(MPI.COMM_WORLD, 1)
   end
@@ -121,9 +188,9 @@ function spinstate_sNSz(s,N,Sz;random="yes")
         state[i] = current_state
         sum += state_index_map[current_state] - 1
       else
-        # Assign the restvalue to the current index
+        # Assign the rest value to the current index
         state[i] = possible_states[Int(state_index_map[state[i]] + (Sz - sum) + 1)]
-        sum += state_index_map[state[i]]-1
+        sum += state_index_map[state[i]] - 1
       end
     end
   end
@@ -144,199 +211,205 @@ end
 # main #
 function main()
 
-# start time
-start_time = DateTime(now())
+  # start time
+  start_time = DateTime(now())
 
-# Set the number of threads to 1, to use all cores as MPI processes
-BLAS.set_num_threads(1)
-NDTensors.Strided.disable_threads()
+  # Set the number of threads to 1, to use all cores as MPI processes
+  BLAS.set_num_threads(1)
+  NDTensors.Strided.disable_threads()
 
-# For now, disable threaded blocksparse
-ITensors.enable_threaded_blocksparse(false)
-# ITensors.enable_threaded_blocksparse(true)
+  # For now, disable threaded blocksparse
+  ITensors.enable_threaded_blocksparse(false)
+  # ITensors.enable_threaded_blocksparse(true)
 
-# Get all needed MPI information
-rank = MPI.Comm_rank(MPI.COMM_WORLD)
-nprocs = MPI.Comm_size(MPI.COMM_WORLD)
+  # Get all needed MPI information
+  rank = MPI.Comm_rank(MPI.COMM_WORLD)
+  nprocs = MPI.Comm_size(MPI.COMM_WORLD)
 
-# Get setup, only rank 0 will do this
-if rank == 0
-    
-  s, N, J1, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
-  println(stderr, "Parameters:")
-  println(stderr, "s = $s, N = $N, J = $J1, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
-  # create the J matrix, with J1 on the off-diagonal TODO: generalize for all J matrices
-  J = zeros(N,N)
-  for i in 1:N-1
-    J[i,i+1] = J1 + (-1)^i * 0.03 * J1
-    J[i+1,i] = J1 + (-1)^i * 0.03 * J1
-    if i != N-1
-      J[i,i+2] = 0.19 *J1
-      J[i+2,i] = 0.19 *J1
+  # Get setup, only rank 0 will do this
+  if rank == 0
+
+    s, N, J_input, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
+    println(stderr, "Parameters:")
+    println(stderr, "s = $s, N = $N, J = $J_input, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
+
+    # Determine if J is scalar or matrix
+    if typeof(J_input) == Float64
+      # Create the J matrix with J1 on the off-diagonal
+      J = zeros(N, N)
+      for i in 1:N-1
+        J[i, i+1] = J_input
+        J[i+1, i] = J_input
+      end
+    elseif typeof(J_input) == Matrix{Float64}
+      # Use the provided J matrix
+      J = J_input
+      # Optional: Validate the J matrix dimensions
+      if size(J, 1) != N || size(J, 2) != N
+        @error "J matrix dimensions ($(size(J, 1))x$(size(J, 2))) do not match N=$N."
+        MPI.Abort(MPI.COMM_WORLD, 1)
+      end
+    else
+      @error "J must be either a Float64 scalar or a Matrix{Float64}."
+      MPI.Abort(MPI.COMM_WORLD, 1)
     end
-  end
-  
-  
-  # TODO: check if there are more symmetry conservation options
-  # https://github.com/ITensor/ITensors.jl/blob/f37d4a5dd8a7376d0daedd74bc326cb6f9653b00/src/lib/SiteTypes/src/sitetypes/spinhalf.jl#L2-L13
-  # available options: conserve_qns, conserve_sz, conserve_szparitiy
-  # system
-  Nsites = N
-  
-  if (2*s)%2 == 0
-    sites = siteinds("S="*string(Int(s)),Nsites;conserve_sz=conserve_symmetry)
-  elseif (2*s)%2 == 1
-    sites = siteinds("S="*string(float(s)),Nsites;conserve_sz=conserve_symmetry)
+
+    # system
+    Nsites = N
+
+    if (2 * s) % 2 == 0
+      sites = siteinds("S="*string(Int(s)), Nsites; conserve_sz=conserve_symmetry)
+    elseif (2 * s) % 2 == 1
+      sites = siteinds("S="*string(float(s)), Nsites; conserve_sz=conserve_symmetry)
+    else
+      @error "Check s"
+      MPI.Abort(MPI.COMM_WORLD, 1)
+    end
+
+    # initial state
+    statei = spinstate_sNSz(s, N, Sz)
+    linkdim = 100 # variable to randomize initial MPS$
+    ψi = randomMPS(sites, statei; linkdims=linkdim)
+
+    # S² operator
+    S2 = Operators.S2_op(Nsites, sites)
+
+    # Sz(i) operator
+    Szi = [Operators.Szi_op(i, sites) for i in 1:Nsites]
+
+    # Print the operators to HDF5 file
+    if print_HDF5
+      h5file = h5open("operators_data.h5", "w")
+      write(h5file, "sites", sites)
+      close(h5file)
+    end
+
+    # Hamiltonian
+    H = Hamiltonian.H(N, sites, J=J)
+
+    # Print the Hamiltonian to HDF5 file
+    if print_HDF5
+      h5file = h5open("H_data.h5", "w")
+      write(h5file, "H", MPO(H, sites))
+      close(h5file)
+    end
+
+    # Partition the Hamiltonian for parallel DMRG
+    Hpart = partition(H, nprocs)
+
   else
-    @error "Check s"
-    MPI.Abort(MPI.COMM_WORLD, 1)
-  end
-  
-  # initial state
-  statei = spinstate_sNSz(s, N, Sz)
-  linkdim = 100 # variable to randomize initial MPS$
-  ψi = randomMPS(sites, statei; linkdims=linkdim)
-  
-  # S² operator
-  S2 = Operators.S2_op(Nsites, sites)
-  
-  # Sz(i) operator
-  Szi = [Operators.Szi_op(i, sites) for i in 1:Nsites]
+    # empty variables for other processes
 
-  # Print the operators to HDF5 file
-  if print_HDF5
-    h5file = h5open("operators_data.h5", "w")
-    write(h5file, "sites", sites)
-    close(h5file)
-  end
-  
-  # Hamiltonian
-  H = Hamiltonian.H(N, sites, J=J)
-
-  # Print the Hamiltonian to HDF5 file
-  if print_HDF5
-    h5file = h5open("H_data.h5", "w")
-    write(h5file, "H", MPO(H, sites))
-    close(h5file)
+    sites = nothing
+    ψi = nothing
+    S2 = nothing
+    Szi = nothing
+    Sz = nothing
+    H = nothing
+    Hpart = nothing
+    nexc = nothing
+    Nsites = nothing
+    print_HDF5 = nothing
+    maximal_energy = nothing
   end
 
-  # Partition the Hamiltonian for parallel DMRG
-  Hpart = partition(H, nprocs)
+  # Broadcast the variables from rank 0 to all processes
+  sites = ITensorParallel.bcast(sites, 0, MPI.COMM_WORLD)
+  ψi = ITensorParallel.bcast(ψi, 0, MPI.COMM_WORLD)
+  S2 = ITensorParallel.bcast(S2, 0, MPI.COMM_WORLD)
+  Szi = ITensorParallel.bcast(Szi, 0, MPI.COMM_WORLD)
+  Sz = ITensorParallel.bcast(Sz, 0, MPI.COMM_WORLD)
+  H = ITensorParallel.bcast(H, 0, MPI.COMM_WORLD)
+  Hpart = ITensorParallel.bcast(Hpart, 0, MPI.COMM_WORLD)
+  nexc = ITensorParallel.bcast(nexc, 0, MPI.COMM_WORLD)
+  Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
+  print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
+  maximal_energy = ITensorParallel.bcast(maximal_energy, 0, MPI.COMM_WORLD)
 
-else
-  # empty variables for other processes
+  # DMRG precision parameters
+  precE = 1E-6
+  precS2 = 1E-6
+  precSzi = 1E-6
+  w = 1E5 # penalty for non-orthogonality
 
-  sites = nothing
-  ψi = nothing
-  S2 = nothing
-  Szi = nothing
-  Sz = nothing
-  H = nothing
-  Hpart = nothing
-  nexc = nothing
-  Nsites = nothing
-  print_HDF5 = nothing
-  maximal_energy = nothing
-end
-
-# Broadcast the variables from rank 0 to all processes
-sites = ITensorParallel.bcast(sites, 0, MPI.COMM_WORLD)
-ψi = ITensorParallel.bcast(ψi, 0, MPI.COMM_WORLD)
-S2 = ITensorParallel.bcast(S2, 0, MPI.COMM_WORLD)
-Szi = ITensorParallel.bcast(Szi, 0, MPI.COMM_WORLD)
-Sz = ITensorParallel.bcast(Sz, 0, MPI.COMM_WORLD)
-H = ITensorParallel.bcast(H, 0, MPI.COMM_WORLD)
-Hpart = ITensorParallel.bcast(Hpart, 0, MPI.COMM_WORLD)
-nexc = ITensorParallel.bcast(nexc, 0, MPI.COMM_WORLD)
-Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
-print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
-maximal_energy = ITensorParallel.bcast(maximal_energy, 0, MPI.COMM_WORLD)
-
-# DMRG precision parameters
-precE = 1E-6
-precS2 = 1E-6
-precSzi = 1E-6
-w = 1E5 # penalty for non-orthogonality
-
-# sum term for parallel DMRG
-MPI.Barrier(MPI.COMM_WORLD)
-mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
-MPI.Barrier(MPI.COMM_WORLD)
-
-# ground state
-E0, ψ0 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
-
-# save ground state
-En = [E0]
-ψn = [ψ0]
-
-# excited states
-for _ in 1:nexc
+  # sum term for parallel DMRG
   MPI.Barrier(MPI.COMM_WORLD)
   mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
   MPI.Barrier(MPI.COMM_WORLD)
-  E,ψ = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term,ψi,precE,precS2,precSzi,S2,Szi,ψn=ψn,w=w)
-  push!(En,E)
-  push!(ψn,ψ)
-end
 
+  # ground state
+  E0, ψ0 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
 
-if maximal_energy
-  # calculate the highest energy state with -H 
-  MPI.Barrier(MPI.COMM_WORLD)
-  mpo_sum_term = MPISumTerm(MPO(-Hpart[rank+1], sites), MPI.COMM_WORLD)
-  MPI.Barrier(MPI.COMM_WORLD)
+  # save ground state
+  En = [E0]
+  ψn = [ψ0]
 
-  # highest energy state
-  E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
-
-  # save highest energy state
-  push!(En, E1)
-  push!(ψn, ψ1)
-end
-
-
-if rank == 0
-  # <ψn|S²|ψn>
-  S2n = [inner(ψn[i]',S2,ψn[i]) for i in eachindex(ψn)]
-  
-  # <ψn|Sz(i)|ψn>
-  Szin = [[inner(ψn[i]',Szi[j],ψn[i]) for j in 1:Nsites] for i in eachindex(ψn)]
-  
-  time = Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now()) - Dates.DateTime(start_time)))
-
-  # outputs
-  println("List of E:")
-  println(En)
-  println()
-  println("List of S²:")
-  println(S2n)
-  println()
-  println("List of Sz(i):")
-  println(Szin)
-  println("----------")
-  println()
-  println("total time = ", time)
-
-  
-  if print_HDF5
-  
-    println(stderr, "Printing to HDF5 file")
-
-    # Open an HDF5 file for writing
-    h5file = h5open("psin_data.h5", "w")
-    
-    # Write the MPS data to the HDF5 file
-    for (i, psi) in enumerate(ψn)
-      group = create_group(h5file, "state_$i")
-      write(group, "ψ", psi)
-    end
-    
-    # Close the HDF5 file
-    close(h5file) 
+  # excited states
+  for excit in 1:nexc
+    println(stderr, "Calculating excited state $excit")
+    MPI.Barrier(MPI.COMM_WORLD)
+    mpo_sum_term = MPISumTerm(MPO(Hpart[rank+1], sites), MPI.COMM_WORLD)
+    MPI.Barrier(MPI.COMM_WORLD)
+    E, ψ = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi, ψn=ψn, w=w)
+    push!(En, E)
+    push!(ψn, ψ)
   end
 
-end
+  if maximal_energy
+    # calculate the highest energy state with -H 
+    println(stderr, "Calculating highest energy state")
+    MPI.Barrier(MPI.COMM_WORLD)
+    mpo_sum_term = MPISumTerm(MPO(-Hpart[rank+1], sites), MPI.COMM_WORLD)
+    MPI.Barrier(MPI.COMM_WORLD)
+
+    # highest energy state
+    E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
+
+    # save highest energy state
+    push!(En, E1)
+    push!(ψn, ψ1)
+  end
+
+  if rank == 0
+    # <ψn|S²|ψn>
+    S2n = [inner(ψn[i]', S2, ψn[i]) for i in eachindex(ψn)]
+
+    # <ψn|Sz(i)|ψn>
+    Szin = [[inner(ψn[i]', Szi[j], ψn[i]) for j in 1:Nsites] for i in eachindex(ψn)]
+
+    time = Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now()) - Dates.DateTime(start_time)))
+
+    # outputs
+    println("List of E:")
+    println(En)
+    println()
+    println("List of S²:")
+    println(S2n)
+    println()
+    println("List of Sz(i):")
+    println(Szin)
+    println("----------")
+    println()
+    println("total time = ", time)
+
+    if print_HDF5
+
+      println(stderr, "Printing to HDF5 file")
+
+      # Open an HDF5 file for writing
+      h5file = h5open("psin_data.h5", "w")
+      
+      # Write the MPS data to the HDF5 file
+      for (i, psi) in enumerate(ψn)
+        group = create_group(h5file, "state_$i")
+        write(group, "ψ", psi)
+      end
+      
+      # Close the HDF5 file
+      close(h5file) 
+    end
+
+  end
 end
 
 main()
