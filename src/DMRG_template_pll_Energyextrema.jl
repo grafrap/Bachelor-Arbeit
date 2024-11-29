@@ -447,7 +447,7 @@ function main()
 
     if print_HDF5
 
-      println(stderr, "Printing to HDF5 file")
+      println("Printing to HDF5 file")
 
       # Open an HDF5 file for writing
       h5file = h5open("psin_data.h5", "w")

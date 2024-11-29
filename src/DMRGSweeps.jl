@@ -109,7 +109,7 @@ using MPI
       end
       if E_conv == 2
         if rank == 0
-          println(stderr, "E converged")
+          println("E converged")
         end
       end
 
@@ -120,7 +120,7 @@ using MPI
       end
       if S2_conv == 2
         if rank == 0
-          println(stderr, "S² converged")
+          println("S² converged")
         end
       end
 
@@ -131,7 +131,7 @@ using MPI
       end
       if Szi_conv == 2 
         if rank == 0
-          println(stderr, "Sz(i) converged")
+          println("Sz(i) converged")
         end
       end
 
