@@ -44,7 +44,6 @@ function parse_arguments()
       input_line = strip(input_line, ['"', '\''])
       # Split the input line into tokens
       tokens = split(input_line)
-      println(stderr, "Arguments read from input file: ", tokens)
     catch e
       @error "Failed to read from stdin." exception=(e, catch_backtrace())
       MPI.Abort(MPI.COMM_WORLD, 1)
