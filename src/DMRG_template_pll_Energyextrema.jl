@@ -57,7 +57,31 @@ function parse_arguments()
   i = 1
   while i <= length(tokens)
     token = tokens[i]
-    if startswith(token, "[")
+    if startswith(token, "[[")
+      # Start collecting J matrix tokens
+      j_tokens = [token]
+      i += 1
+      while i <= length(tokens) && !endswith(tokens[i], "]]")
+        push!(j_tokens, tokens[i])
+        i += 1
+      end
+      if i <= length(tokens)
+        push!(j_tokens, tokens[i])  # Add the closing brackets
+        i += 1
+      else
+        @error "J matrix not properly closed with ']]'."
+        MPI.Abort(MPI.COMM_WORLD, 1)
+      end
+      # Join all J tokens into one string
+      J_str = join(j_tokens, " ")
+      # Convert Python-like array to Julia-like array
+      J_str = strip(J_str, ['[', ']'])
+      J_str = replace(J_str, r"\],\s*\[" => "; ")
+      J_str = replace(J_str, "," => " ")
+      J_str = "[" * J_str * "]"
+      push!(input_args, J_str)      
+
+    elseif startswith(token, "[")
       # Start collecting J matrix tokens
       j_tokens = [token]
       i += 1
