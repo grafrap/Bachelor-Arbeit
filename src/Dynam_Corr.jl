@@ -85,7 +85,7 @@ function Chebyshev_expansion(x::Vector, N::Int)
   return T
 end
 
-function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector, sites, J; N_min::Int=3, cutoff::Float64=1e-8)
+function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64, E1::Float64, ω::Vector, N_max; cutoff::Float64=1e-8)
   #=
   Implements the dynamical spin correlator for a vector of frequencies
     χ(ω) = <ψ|Â δ(ωI - Ĥ - E_0) Â|ψ>
@@ -93,9 +93,7 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   =#
   
   # check the input
-  if N_min < 3
-    N_min = 3
-  end
+  N_min = 10
 
   for idx in 1:length(ω)
     @assert ω[idx] < -E0 - E1 "ω must be less than W"
@@ -108,15 +106,17 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   W_ = 1 - 0.5*ϵ # W', scaled W
   a = W/(2*W_)
   L = length(ψ)
-  N_max = Int(4 * 4 * L * ceil(L/2 - 2))
-  if N_max < 800
-    N_max = 800
+  N_max = Int(round(W))
+  if N_max < 500
+    N_max = 500
+  end
+  if N != 500
+    N_max = N
   end
   println(stderr, "N_max = $N_max")
-  # TODO: can i use here the add function from ITensors.jl? Maybe use autompo or cutoff (to test)
-  # H_scaled = 1/a * (H - E0*I) - W_*I
+
   H_scaled = add(1/a * add(H, -E0*I; cutoff=cutoff), -W_*I; cutoff=cutoff)
-  # H_scaled = Hamiltonian.Scaled_Hamiltonian(a, E0, W_, sites, J) # add either sites or I here aswell
+
   ω_ = ω./a .- W_ # ω', scaled ω
   Δω = ω[2] - ω[1] # frequency step for integration
   sum_old = 0.0 # integration sum
@@ -197,7 +197,7 @@ end
 
 function main()
 # read in the Groundstate MPS
-f = h5open("outputs/psin_data.h5", "r")
+f = h5open("parent_calc_folder/psin_data.h5", "r")
 ψ0 = read(f, "state_1/ψ", MPS)
 close(f)
 # show(ψ0)
@@ -205,12 +205,12 @@ close(f)
 N = length(ψ0)
 
 # read in the Hamiltonian
-f = h5open("outputs/H_data.h5", "r")
+f = h5open("parent_calc_folder/H_data.h5", "r")
 H = read(f, "H", MPO)
 close(f)
 
 # read in the ground state energy
-fr = open("outputs/Szi_Sz_pll=0.0.txt", "r")
+fr = open("parent_calc_folder/dmrg.out", "r")
 lines = readlines(fr)
 close(fr)
 
@@ -220,35 +220,38 @@ E0 = energy_array[1]
 E1 = energy_array[2]
 
 # read in the operators
-f = h5open("outputs/operators_data.h5", "r")
+f = h5open("parent_calc_folder/operators_data.h5", "r")
 sites = read(f, "sites", IndexSet)
 I = Operators.Identity_op(sites)
 Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 close(f)
 
+# TODO: read in the J, to know where to stop with \omega
+
+N_max = 0
 # calculate the dynamical correlator
-len_ω = parse(Int, ARGS[1])
+if length(ARGS) >= 1
+  N_max = ARGS[1]
+elseif -E0 - E1 < 600
+  N_max = 600
+else
+  N_max = -E0 - E1
+end
+
+len_ω = 1000
 ω = collect(range(0.0001, stop=3, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
-J1 = 1
-J = zeros(N,N)
-for i in 1:N-1
-  J[i,i+1] = J1 + (-1)^i * 0.03 * J1
-  J[i+1,i] = J1 + (-1)^i * 0.03 * J1
-  if i != N-1
-    J[i,i+2] = 0.19 *J1
-    J[i+2,i] = 0.19 *J1
-  end
-end
 
 # main loop
 @threads for i in eachindex(Sz)
   println(stderr, "Calculating χ for Sz[$i]")
-  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, sites, J)
+  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, N_max)
 end
 
 # write the results to a file for the plot
 println(χ)
+
+# TODO: add plotting here
 end
 
 main()
