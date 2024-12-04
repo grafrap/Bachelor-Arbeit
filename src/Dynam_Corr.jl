@@ -370,7 +370,7 @@ len_ω = 500 * Int(round(J_mean))
 println("Number of threads: $(nthreads())")
 # main loop
 @threads for i in eachindex(Sz)
-  println("Calculating χ for Sz[$i]")
+  println("Calculating χ for Sz($i)")
   χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, N_max)
 end
 
