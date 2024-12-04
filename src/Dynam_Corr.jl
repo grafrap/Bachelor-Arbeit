@@ -9,9 +9,7 @@ using Dates
 lib_dir = "."
 include(lib_dir*"/Operators.jl")
 include(lib_dir*"/Customspace.jl")
-include(lib_dir*"/Hamiltonian.jl")
 import .Operators
-import .Hamiltonian
 
 
 function Jackson_dampening(N::Int)
@@ -192,6 +190,7 @@ function parse_arguments(E0::Float64, E1::Float64)
     try 
       input_line = readline(stdin)
       input_args = split(input_line, ['"', '\''])
+      println(stderr, "Input arguments: $input_args")
       tokens = split(input_args)
     catch e
       @error "Failed to read from stdin." exception=(e, catch_backtrace())
@@ -351,11 +350,20 @@ close(f)
 # TODO: read in the J, to know where to stop with \omega
 
 J , N_max, cutoff = parse_arguments(E0, E1)
+J_mean = 0.0
+if typeof(J) == Vector{Float64}
+  # assign the avg of the nonzero elements to J_mean
+  J_mean = sum(J) / length(J[J .!= 0])
+else
+  J_mean = J
+end
+  
 println("N_max = $N_max")
 println("cutoff = $cutoff")
+println("J = $J_mean")
 
 len_ω = 1000
-ω = collect(range(0.0001, stop=3, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+ω = collect(range(0.0001, stop=2*J_mean, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
 
 # print the number of threads
