@@ -106,14 +106,6 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   W_ = 1 - 0.5*ϵ # W', scaled W
   a = W/(2*W_)
   L = length(ψ)
-  N_max = Int(round(W))
-  if N_max < 500
-    N_max = 500
-  end
-  if N != 500
-    N_max = N
-  end
-  println(stderr, "N_max = $N_max")
 
   H_scaled = add(1/a * add(H, -E0*I; cutoff=cutoff), -W_*I; cutoff=cutoff)
 
@@ -175,13 +167,13 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     Δt = end_time - start_time
 
     # output for error convergence and time measurement
-    println(stderr, "N = $N_min\t i = $i\t Error = $error\t sum_χ = $sum_χ\t Δsum = $(abs(sum_χ - sum_old))\t Δt = $Δt")
+    println("N = $N_min\t i = $i\t Error = $error\t sum_χ = $sum_χ\t Δsum = $(abs(sum_χ - sum_old))\t Δt = $Δt")
 
     # stopping criterion on N, best if all sites have same number of chebyshev expansion terms
     if N_min > N_max || error > 1 
 
       if N_min > N_max
-        println(stderr, "N_min > N_max")
+        println("N_min > N_max")
       end
       if error > 1
         @error "Error > 1"
@@ -192,6 +184,136 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   end
       
   return χ
+end
+
+function parse_arguments(E0::Float64, E1::Float64)
+  if length(ARGS) == 0
+    println("No command-line arguments provided. Reading in from stdin.")
+    try 
+      input_line = readline(stdin)
+      input_args = split(input_line, ['"', '\''])
+      tokens = split(input_args)
+    catch e
+      @error "Failed to read from stdin." exception=(e, catch_backtrace())
+      exit(1)
+    end
+  else
+    tokens = ARGS
+  end
+
+  if length(tokens) < 1
+    println("Usage: julia Dynam_Corr.jl <J> [N_max] [cutoff]")
+    exit(1)
+  end
+
+  i = 1
+  while i <= length(tokens)
+    token = tokens[i]
+    if startswith(token, "[[")
+      # Start collecting J matrix tokens
+      j_tokens = [token]
+      i += 1
+      while i <= length(tokens) && !endswith(tokens[i], "]]")
+        push!(j_tokens, tokens[i])
+        i += 1
+      end
+      if i <= length(tokens)
+        push!(j_tokens, tokens[i])  # Add the closing brackets
+        i += 1
+      else
+        @error "J matrix not properly closed with ']]'."
+        exit(1)
+      end
+      # Join all J tokens into one string
+      J_str = join(j_tokens, " ")
+      # Convert Python-like array to Julia-like array
+      J_str = strip(J_str, ['[', ']'])
+      J_str = replace(J_str, r"\],\s*\[" => "; ")
+      J_str = replace(J_str, "," => " ")
+      J_str = "[" * J_str * "]"
+      push!(input_args, J_str)      
+
+    elseif startswith(token, "[")
+      # Start collecting J matrix tokens
+      j_tokens = [token]
+      i += 1
+      while i <= length(tokens) && !endswith(tokens[i], "]")
+        push!(j_tokens, tokens[i])
+        i += 1
+      end
+      if i <= length(tokens)
+        push!(j_tokens, tokens[i])  # Add the closing bracket
+        i += 1
+      else
+        @error "J matrix not properly closed with ']'."
+        exit(1)
+      end
+      # Join all J tokens into one string
+      J_str = join(j_tokens, " ")
+      push!(input_args, J_str)
+    else
+      # Regular argument
+      push!(input_args, token)
+      i += 1
+    end
+  end
+
+  J_input = input_args[1]
+  
+  # Initialize J as Union{Float64, Matrix{Float64}}
+  J = nothing
+
+  # Check if J is a matrix and parse it
+  if startswith(J_input, "[") && endswith(J_input, "]")
+    # Parse J as a matrix
+    J_content = J_input[2:end-1]  # Remove surrounding brackets
+    rows = split(J_content, ";")
+    try
+      # Parse each row into a vector of Float64
+      J_matrix = [parse.(Float64, split(strip(row))) for row in rows]
+      # Ensure all rows have the same number of columns
+      row_lengths = [length(row) for row in J_matrix]
+      if length(unique(row_lengths)) != 1
+        @error "All rows in J matrix must have the same number of columns."
+        exit(1)
+      end
+      # Convert arrays of arrays to a 2D Matrix
+      J = reduce(vcat, J_matrix)
+      J = reshape(J, row_lengths[1], length(J_matrix))
+    catch e
+      @error "Failed to parse J matrix: $e"
+      exit(1)
+    end
+  else
+    # Parse J as a scalar
+    try
+      J = parse(Float64, J_input)
+    catch e
+      @error "Failed to parse J as a Float64: $e"
+      exit(1)
+    end
+  end
+
+  N_max = abs(E0 + E1) < 600 ? abs(E0 + E1) : 600
+  cutoff = 1e-8
+  # Parse N_max or cutoff
+  if length(input_args) == 2
+    second_arg = input_args[2]
+    if tryparse(Int, second_arg) !== nothing
+      N_max = parse(Int, second_arg)
+    elseif tryparse(Float64, second_arg) !== nothing
+      cutoff = parse(Float64, second_arg)
+    else
+      @error "Second argument must be an integer (N_max) or a float (cutoff)."
+      exit(1)
+    end
+
+  elseif length(input_args) == 3
+    N_max = parse(Int, input_args[2])
+    cutoff = parse(Float64, input_args[3])
+  end
+
+  return J, N_max, cutoff
 end
 
 
@@ -228,23 +350,19 @@ close(f)
 
 # TODO: read in the J, to know where to stop with \omega
 
-N_max = 0
-# calculate the dynamical correlator
-if length(ARGS) >= 1
-  N_max = ARGS[1]
-elseif -E0 - E1 < 600
-  N_max = 600
-else
-  N_max = -E0 - E1
-end
+J , N_max, cutoff = parse_arguments(E0, E1)
+println("N_max = $N_max")
+println("cutoff = $cutoff")
 
 len_ω = 1000
 ω = collect(range(0.0001, stop=3, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
 
+# print the number of threads
+println("Number of threads: $(nthreads())")
 # main loop
 @threads for i in eachindex(Sz)
-  println(stderr, "Calculating χ for Sz[$i]")
+  println("Calculating χ for Sz[$i]")
   χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, N_max)
 end
 
