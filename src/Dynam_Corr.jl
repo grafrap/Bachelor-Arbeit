@@ -295,9 +295,7 @@ function parse_arguments(E0::Float64, E1::Float64)
     end
   end
 
-  println(stderr, "E1: ", E1, " E0: ", E0, "abs(E0 + E1): ", abs(E0 + E1))
   N_max = Int(round(abs(E0 + E1) > 600 ? abs(E0 + E1) : 600))
-  println(stderr, "N_max: ", N_max)
   cutoff = 1e-8
   # Parse N_max or cutoff
   if length(input_args) == 2
@@ -384,9 +382,11 @@ min = minimum(χ)
 max = maximum(χ)
 χ = χ ./ max
 
+χ_transposed = permutedims(χ)
+
 # plot the histogram for χ
 tickpoints = range(0, len_ω, length=11)
-heatmap(χ, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = $N_max", size=(800, 600), margin=10Plots.mm)
+heatmap(χ_transposed, xlabel="Sites", ylabel="Frequencies [J]", title="2D Histogram of Matrix for N = $N_max", size=(800, 600), margin=10Plots.mm)
 yticks!(tickpoints, string.([0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]))
 savefig("histogram.png")
 end
