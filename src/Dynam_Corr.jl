@@ -5,6 +5,7 @@ using InteractiveUtils
 using LinearAlgebra
 using Base.Threads
 using Dates
+using Plots
 
 lib_dir = "."
 include(lib_dir*"/Operators.jl")
@@ -171,10 +172,11 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
     if N_min > N_max || error > 1 
 
       if N_min > N_max
-        println("N_min > N_max")
+        println("N > N_max")
       end
       if error > 1
         @error "Error > 1"
+        exit(1)
       end
       break
     end
@@ -185,13 +187,13 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
 end
 
 function parse_arguments(E0::Float64, E1::Float64)
+  input_args = []
   if length(ARGS) == 0
     println("No command-line arguments provided. Reading in from stdin.")
     try 
       input_line = readline(stdin)
-      input_args = split(input_line, ['"', '\''])
-      println(stderr, "Input arguments: $input_args")
-      tokens = split(input_args)
+      input_line = split(input_line, ['"', '\''])
+      tokens = split(input_line[1])
     catch e
       @error "Failed to read from stdin." exception=(e, catch_backtrace())
       exit(1)
@@ -293,7 +295,9 @@ function parse_arguments(E0::Float64, E1::Float64)
     end
   end
 
-  N_max = abs(E0 + E1) < 600 ? abs(E0 + E1) : 600
+  println(stderr, "E1: ", E1, " E0: ", E0, "abs(E0 + E1): ", abs(E0 + E1))
+  N_max = Int(round(abs(E0 + E1) > 600 ? abs(E0 + E1) : 600))
+  println(stderr, "N_max: ", N_max)
   cutoff = 1e-8
   # Parse N_max or cutoff
   if length(input_args) == 2
@@ -318,6 +322,18 @@ end
 
 function main()
 # read in the Groundstate MPS
+
+# read in the ground state energy
+fr = open("parent_calc_folder/dmrg.out", "r")
+lines = readlines(fr)
+close(fr)
+
+energy_line = findfirst(contains("List of E:"), lines) + 1
+energy_array = eval(Meta.parse(lines[energy_line]))
+E0 = energy_array[1]
+E1 = energy_array[end]
+
+J , N_max, cutoff = parse_arguments(E0, E1)
 f = h5open("parent_calc_folder/psin_data.h5", "r")
 ψ0 = read(f, "state_1/ψ", MPS)
 close(f)
@@ -329,17 +345,6 @@ N = length(ψ0)
 f = h5open("parent_calc_folder/H_data.h5", "r")
 H = read(f, "H", MPO)
 close(f)
-
-# read in the ground state energy
-fr = open("parent_calc_folder/dmrg.out", "r")
-lines = readlines(fr)
-close(fr)
-
-energy_line = findfirst(contains("List of E:"), lines) + 1
-energy_array = eval(Meta.parse(lines[energy_line]))
-E0 = energy_array[1]
-E1 = energy_array[2]
-
 # read in the operators
 f = h5open("parent_calc_folder/operators_data.h5", "r")
 sites = read(f, "sites", IndexSet)
@@ -347,11 +352,8 @@ I = Operators.Identity_op(sites)
 Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 close(f)
 
-# TODO: read in the J, to know where to stop with \omega
-
-J , N_max, cutoff = parse_arguments(E0, E1)
 J_mean = 0.0
-if typeof(J) == Vector{Float64}
+if typeof(J) == Matrix{Float64}
   # assign the avg of the nonzero elements to J_mean
   J_mean = sum(J) / length(J[J .!= 0])
 else
@@ -362,7 +364,7 @@ println("N_max = $N_max")
 println("cutoff = $cutoff")
 println("J = $J_mean")
 
-len_ω = 1000
+len_ω = 500 * Int(round(J_mean))
 ω = collect(range(0.0001, stop=2*J_mean, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
 
@@ -377,7 +379,16 @@ end
 # write the results to a file for the plot
 println(χ)
 
-# TODO: add plotting here
+min = minimum(χ)
+χ = χ .- min
+max = maximum(χ)
+χ = χ ./ max
+
+# plot the histogram for χ
+tickpoints = range(0, len_ω, length=11)
+heatmap(χ, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = $N_max", size=(800, 600), margin=10Plots.mm)
+yticks!(tickpoints, string.([0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]))
+savefig("histogram.png")
 end
 
 main()
