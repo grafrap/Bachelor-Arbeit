@@ -45,7 +45,10 @@ matrix = matrix ./ max
 # end
 
 # Use the heatmap function to create the 2D histogram
-heatmap(matrix, xlabel="Sites", ylabel="frequencies", title="2D Histogram of Matrix for N = 1000", size=(800, 600), margin=10Plots.mm, color=:viridis)
+tickpoints = range(0, size(matrix, 1), length=11)
+println(stderr, tickpoints)
+heatmap(matrix, xlabel="Sites", ylabel="Frequencies [J]", title="2D Histogram of Matrix for N = 1000", size=(800, 600), margin=10Plots.mm)
+yticks!(tickpoints, string.([0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0]))
 
 # Save the plot to a file
 savefig("histograms/2d_histogram_8_false_deltatest_1000.png")

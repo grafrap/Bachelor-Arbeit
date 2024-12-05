@@ -24,8 +24,10 @@
 │   mpiexec = "mpiexec"
 │   preloads = Any[]
 └   preloads_env_switch = nothing
-┌ Warning: MPS center bond dimension is less than requested (you requested 100, but in practice it is 81. This is likely due to technicalities of truncating quantum number sectors.
-└ @ ITensorMPS ~/.julia/packages/ITensorMPS/ULTh9/src/mps.jl:153
+Arguments read from input file: SubString{String}["1", "10", "[[0,", "23,", "0,", "0,", "0,", "0,", "0,", "0,", "0,", "0],", "[23,", "0,", "38,", "0,", "0,", "0,", "0,", "0,", "0,", "0],", "[0,", "38,", "0,", "23,", "0,", "0,", "0,", "0,", "0,", "0],", "[0,", "0,", "23,", "0,", "38,", "0,", "0,", "0,", "0,", "0],", "[0,", "0,", "0,", "38,", "0,", "23,", "0,", "0,", "0,", "0],", "[0,", "0,", "0,", "0,", "23,", "0,", "38,", "0,", "0,", "0],", "[0,", "0,", "0,", "0,", "0,", "38,", "0,", "23,", "0,", "0],", "[0,", "0,", "0,", "0,", "0,", "0,", "23,", "0,", "38,", "0],", "[0,", "0,", "0,", "0,", "0,", "0,", "0,", "38,", "0,", "23],", "[0,", "0,", "0,", "0,", "0,", "0,", "0,", "0,", "23,", "0]]", "1", "false", "true", "true"]
+E converged
+S² converged
+Sz(i) converged
 E converged
 S² converged
 Sz(i) converged

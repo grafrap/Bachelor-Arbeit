@@ -1,0 +1,34 @@
+First install julia:
+curl -fsSL https://install.julialang.org | sh
+Then create environment
+cd ~
+mkdir julia; cd julia
+julia
+]
+activate DMRGenv
+add HDF5 LinearAlgebra Strided Dates Random InteractiveUtils DelimitedFiles Plots Printf ITensors ITensorMPS MPIPreferences
+backspace
+exit()
+mkdir ITensorParallel
+cd ITensorParallel
+git clone git clone https://github.com/ITensor/ITensorParallel.jl.git
+cd ..
+julia
+]
+activate DMRGenv
+backspace
+using Pkg;    Pkg.develop(path="./ITensorParallel/ITensorParallel.jl");    using ITensorParallel
+]
+instantiate
+
+run from now on: Julia --project=~/julia/DMRGenv script.jl
+
+install the DMRG code: https://github.com/grafrap/Bachelor-Arbeit.git
+
+Install the code on machine
+verdi code create core.code.installed --label dmrg --computer localhost --filepath-executable /home/jovyan/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl --non-interactive
+
+verdi code list 
+cd aiida-dmrg 
+pip install --user -e .
+verdi plugin list aiida.calculations
