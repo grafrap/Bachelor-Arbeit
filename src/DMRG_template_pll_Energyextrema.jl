@@ -1,4 +1,4 @@
-# command for this script: mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 100 0.4 0 1 true true > outputs/output.txt 2> outputs/error.txt
+# command for this script: mpirun -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 100 0.4 0 1 true true true > outputs/output.txt 2> outputs/error.txt
 ###############################################################################
 # packages #
 ###############################################################################
@@ -28,8 +28,6 @@ include(lib_dir*"/Customspace.jl")
 import .Operators
 import .Hamiltonian
 import .DMRGSweeps
-# run this script with: mpiexecjl -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 0 true true > outputs/output.txt (julia 1.9)
-# run this script with: mpirun -n 4 julia DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 0 false true > outputs/output.txt (julia 1.10/1.11)
 
 # Function to parse arguments
 function parse_arguments()
