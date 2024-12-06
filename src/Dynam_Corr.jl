@@ -362,7 +362,7 @@ println("N_max = $N_max")
 println("cutoff = $cutoff")
 println("J = $J_mean")
 
-len_ω = 500 * Int(round(J_mean))
+len_ω = 500 * max(1, Int(round(J_mean)))
 ω = collect(range(0.0001, stop=2*J_mean, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
 
@@ -379,8 +379,8 @@ println(χ)
 
 min = minimum(χ)
 χ = χ .- min
-max = maximum(χ)
-χ = χ ./ max
+max_val = maximum(χ)
+χ = χ ./ max_val
 
 χ_transposed = permutedims(χ)
 
