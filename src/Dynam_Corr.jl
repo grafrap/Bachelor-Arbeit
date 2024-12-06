@@ -377,8 +377,8 @@ end
 # write the results to a file for the plot
 println(χ)
 
-min = minimum(χ)
-χ = χ .- min
+min_val = minimum(χ)
+χ = χ .- min_val
 max_val = maximum(χ)
 χ = χ ./ max_val
 
