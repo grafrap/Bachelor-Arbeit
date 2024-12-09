@@ -70,7 +70,7 @@ DMRG_template_pll_Energyextrema.jl < dmrg.inp \
 The script outputs an array of energy values for all calculated states of the hamiltonian. In addition, it prints the arrays for <ψn|S²|ψn> and <ψn|Sz(i)|ψn>, where ψn are all the calculated wave functions. If specified, it outputs the HDF5 files of the wavefunction MPS, the hamiltonian MPO and the sites information.
 #### Example
 ```shell
-mpirun -n 4 julia --profile=~/julia/DMRGenv \
+mpirun -n 4 julia --project=~/julia/DMRGenv \
 DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 1 true \
 true true > parent_calc_folder/dmrg.out 2> parent_calc_folder/dmrg.err
 ```
@@ -79,12 +79,15 @@ true true > parent_calc_folder/dmrg.out 2> parent_calc_folder/dmrg.err
 #### Command
 First, make sure, that you copy all created HDF5 files into the folder `parent_calc_folder`
 ```shell
-julia -t <t> --profile=/path-to-env Dynam_Corr.jl <J> [N] [cutoff] \ 
+cp *.h5 parent_calc_folder/
+```
+```shell
+julia -t <t> --project=/path-to-env Dynam_Corr.jl <J> [N] [cutoff] \ 
 > dyncorr.out 2> dyncorr.err
 ```
 or with an input file:
 ```shell
-julia -t <t> --profile=/path-to-env Dynam_Corr.jl < dyncorr.inp > \
+julia -t <t> --project=/path-to-env Dynam_Corr.jl < dyncorr.inp > \
 > dyncorr.out 2> dyncorr.err
 ```
 #### Arguments
