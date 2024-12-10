@@ -1,0 +1,20 @@
+uenv image pull julia
+(or specific version)
+uenv repo create
+uenv start julia
+uenv view julia
+juliaup init
+(let everything download)
+module load cray/23.12 nvhpc-hpcx-cuda12/24.3
+module load hpcx-ompi
+julia
+go to pkg mode
+add HDF5 LinearAlgebra Strided Dates Random InteractiveUtils DelimitedFiles Plots Printf ITensors ITensorMPS MPIPreferences MPI
+mkdir ITensorParallel
+cd ITensorParallel
+git clone https://github.com/ITensor/ITensorParallel.jl.git
+cd ..
+julia
+using Pkg;    Pkg.develop(path="./ITensorParallel/ITensorParallel.jl");    using ITensorParallel
+go to pkg mode
+precompile 
