@@ -124,7 +124,7 @@ using MPI
         end
       end
 
-      if maximum(abs.(Szid-Szie)) < precSzi
+      if maximum(abs.(Szid-Szie)) < precSzi || maximum(abs.(Szie)) < 1e-3
         Szi_conv += 1
       else
         Szi_conv = 0
@@ -134,10 +134,13 @@ using MPI
           println("Sz(i) converged")
         end
       end
-
-      # check if all converged and stop if so
+      if rank == 0
+        println("maximum(abs.(Szid-Szie)) = ",maximum(abs.(Szid-Szie)))
+        println("maximum(abs.(Szie)) = ", maximum(abs.(Szie)))
+      end
+        # check if all converged and stop if so
       if abs(Ed-Ee) < precE && 
-        maximum(abs.(Szid-Szie)) < precSzi
+        (maximum(abs.(Szid-Szie)) < precSzi || maximum(abs.(Szie)) < 1e-3)
         j += 1
       else
         j = 0

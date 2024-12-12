@@ -370,8 +370,8 @@ function main()
 
   # DMRG precision parameters
   precE = 1E-6
-  precS2 = 1E-6
-  precSzi = 1E-6
+  precS2 = 1E-4
+  precSzi = 1E-4
   w = 1E5 # penalty for non-orthogonality
 
   # sum term for parallel DMRG
