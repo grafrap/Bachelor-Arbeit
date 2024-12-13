@@ -225,14 +225,14 @@ function spinstate_sNSz(s, N, Sz; random="yes")
         continue
       end
       # Check, if we are free to choose a random bigger state
-      if sum + s < Sz
+      if sum - state_index_map[state[i]] + 1 + 2*s < Sz
         # Assign random bigger state to the current index
         current_state = possible_states[rand(state_index_map[state[i]]+1:end)]
         state[i] = current_state
         sum += state_index_map[current_state] - 1
       else
         # Assign the rest value to the current index
-        state[i] = possible_states[Int(state_index_map[state[i]] + (Sz - sum) + 1)]
+        state[i] = possible_states[Int(state_index_map[state[i]] + (Sz - sum))]
         sum += state_index_map[state[i]] - 1
       end
     end
