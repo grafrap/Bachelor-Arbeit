@@ -18,7 +18,7 @@ module load cray-mpich hdf5
 ```
 ```shell
 julia
-```shell
+```
 go to pkg mode
 ```shell
 add HDF5 LinearAlgebra Strided Dates Random InteractiveUtils DelimitedFiles Plots Printf ITensors ITensorMPS MPIPreferences MPI
@@ -38,6 +38,11 @@ julia
 ```shell
 using Pkg;    Pkg.develop(path="./ITensorParallel/ITensorParallel.jl");    using ITensorParallel
 ```
+In order to run the dyncorr calculation, in the first line, you have to add the path to your julia installation like this:
+```shell
+which julia
+```
+copy the output and write it together with `#!` to the first line of the script Dyynam_Corr.jl
 go to pkg mode
 ```shell
 precompile
