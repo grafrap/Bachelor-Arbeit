@@ -13,7 +13,7 @@
 #SBATCH --hint=nomultithread
 #SBATCH --no-requeue
 module load  cray-mpich/8.1.30    hdf5/1.14.3 
-export JULIA_DEPOT_PATH="/capstor/scratch/cscs/{username}/daint/juliaup/depot"
+export JULIA_DEPOT_PATH="/capstor/scratch/cscs/$USER/daint/juliaup/depot"
 export PATH="$SCRATCH/daint/juliaup/bin:$PATH"
 export JULIA_NUM_THREADS=$SLURM_CPUS_PER_TASK
-srun -n 4 julia /users/{username}/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 1 true true true > parent_calc_folder/dmrg_.out 2> parent_calc_folder/dmrg_.err
+srun -n 4 julia /users/$USER/Bachelor-Arbeit/src/DMRG_template_pll_Energyextrema.jl 0.5 10 0.4 0 1 true true true > parent_calc_folder/dmrg_.out 2> parent_calc_folder/dmrg_.err
