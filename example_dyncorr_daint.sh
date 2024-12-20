@@ -8,13 +8,13 @@
 #SBATCH --error=job%j.err
 #SBATCH --time=00:10:00
 #SBATCH -A <Account name>
-#SBATCH --partition=debug
+#SBATCH --partition=normal
 #SBATCH --job-name=Dyncorr
 #SBATCH --no-requeue
 
 module load  cray-mpich/8.1.30    hdf5/1.14.3 
-export JULIA_DEPOT_PATH="/capstor/scratch/cscs/{username}/daint/juliaup/depot"
+export JULIA_DEPOT_PATH="/capstor/scratch/cscs/$USER/daint/juliaup/depot"
 export PATH="$SCRATCH/daint/juliaup/bin:$PATH"
 export JULIA_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cp *.h5 parent_calc_folder/
-/users/{username}/Bachelor-Arbeit/src/Dynam_Corr.jl 0.4 200 1e-6 > parent_calc_folder/dyncorr.out 2> parent_calc_folder/dyncorr.err
+/users/$USER/Bachelor-Arbeit/src/Dynam_Corr.jl 0.4 200 1e-6 > parent_calc_folder/dyncorr.out 2> parent_calc_folder/dyncorr.err
