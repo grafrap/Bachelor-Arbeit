@@ -1,0 +1,22 @@
+label: daint-julia
+hostname: daint.alps.cscs.ch
+description: Daint@alps CSCS
+transport: core.ssh
+scheduler: core.slurm
+shebang: '#!/bin/bash -l'
+mpiprocs_per_machine: 256
+default_memory_per_machine: 268435456
+work_dir: /capstor/scratch/cscs/{username}/aiida/
+mpirun_command: srun julia 
+use_double_quotes : "False"
+prepend_text: |
+    #SBATCH --uenv=julia/24.9:v1@todi
+    #SBATCH --partition=normal
+    #SBATCH --no-requeue
+    #SBATCH --account=s1267
+    #SBATCH --view=modules
+    module load cray-mpich hdf5
+    export JULIA_DEPOT_PATH="/capstor/scratch/cscs/rgraf/todi/juliaup/depot"
+    export PATH="$SCRATCH/todi/juliaup/bin:$PATH"
+    export JULIA_NUM_THREADS=$SLURM_CPUS_PER_TASK
+append_text: ''
