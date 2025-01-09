@@ -87,7 +87,7 @@ julia -t <t> --project=/path-to-env Dynam_Corr.jl <J> [N] [cutoff] \
 ```
 or with an input file:
 ```shell
-julia -t <t> --project=/path-to-env Dynam_Corr.jl < dyncorr.inp > \
+julia -t <t> --project=/path-to-env Dynam_Corr.jl < dyncorr.inp \
 > dyncorr.out 2> dyncorr.err
 ```
 #### Arguments
@@ -103,7 +103,7 @@ This script outputs the dynamical correlator for ω values between 0 and 2 J_mea
 
 #### Example
 ```shell
-julia -t 5 --profile=~/julia/DMRGenv Dynam_Corr.jl 0.4 1000 1e-6 > \
+julia -t 5 --project=~/julia/DMRGenv Dynam_Corr.jl 0.4 1000 1e-6 > \
 dyncorr.out 2> dyncorr.err
 ```
 
