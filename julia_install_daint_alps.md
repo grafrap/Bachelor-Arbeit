@@ -38,6 +38,7 @@ julia
 ```shell
 using Pkg;    Pkg.develop(path="./ITensorParallel/ITensorParallel.jl");    using ITensorParallel
 ```
+go to pkg mode
 ```shell
 precompile
 ```
@@ -46,4 +47,7 @@ In order to run the dyncorr calculation, in the first line, you have to add the 
 which julia
 ```
 copy the output and write it together with `#!` to the first line of the script Dyynam_Corr.jl
-go to pkg mode
+make the Dynam_Corr.jl script executable with (go to the src folder for this)
+```shell
+chmod 755 Dynam_Corr.jl
+```
