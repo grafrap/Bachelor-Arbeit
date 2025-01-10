@@ -34,21 +34,36 @@ function Chebyshev_vectors(B::MPO, H::MPO, ψ::MPS, N::Int)
   t[2] = apply(H, t[1]; cutoff=1e-8)
 
   for n in 3:N+1
+    time = DateTime(now())
     t[n] = 2*apply(H, t[n-1]; cutoff=1e-8)
     t[n] = add(t[n], -t[n-2]; cutoff=1e-8)
+    end_time = DateTime(now())
+    println("Chebyshev_vectors, N=$n\t, Δt = $(end_time - time)")
   end
 
   return t
 end
 
-function Chebyshev_moments(ψ::MPS, A::MPO, t::Array{MPS, 1})
+function Chebyshev_moments(ψ::MPS, A::MPO, t::Array{MPS, 1}, i::Int)
   #=
-    Implements the Chebyshev moments μ_n = ⟨ψ|Â*T_n(Ĥ')*B^|ψ⟩ = ⟨ψ|Â∣t_n⟩
+    Implements the Chebyshev moments μ_n = ⟨ψ|Â*T_n(Ĥ')*B^|ψ⟩ = ⟨ψ|Â∣t_n⟩ (first half)
+    and μ_{n+n'} = 2*<t_n|t_{n'}> - μ_{n-n'} (second half)
   =#
-  μ = zeros(length(t))
+  μ = zeros(2*length(t)-1)
 
   for n in 1:length(t)
+    time = DateTime(now())
     μ[n] = inner(ψ', A, t[n])
+    end_time = DateTime(now())
+    println("N=$n\t i=$i\t Δt = $(end_time - time)")
+  end
+
+  n = length(t)
+  for n_ in 1:length(t)-1
+    time = DateTime(now())
+    μ[n+n_] = 2*inner(t[n],t[n_+1]) - μ[n-n_]
+    end_time = DateTime(now())
+    println("N=$(n+n_)\t i=$i\t Δt = $(end_time - time)")
   end
 
   return μ
@@ -92,8 +107,6 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   =#
   
   # check the input
-  N_min = 10
-
   for idx in 1:length(ω)
     @assert ω[idx] < -E0 - E1 "ω must be less than W"
     @assert ω[idx] > 0 "ω must be positive"
@@ -104,85 +117,36 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
   W = -E0 - E1 # W* = -E0 + E1
   W_ = 1 - 0.5*ϵ # W', scaled W
   a = W/(2*W_)
-  L = length(ψ)
 
   H_scaled = add(1/a * add(H, -E0*I; cutoff=cutoff), -W_*I; cutoff=cutoff)
 
   ω_ = ω./a .- W_ # ω', scaled ω
   Δω = ω[2] - ω[1] # frequency step for integration
-  sum_old = 0.0 # integration sum
 
   #calculate the Jackson dampening factors
-  g = Jackson_dampening(N_min)
+  g = Jackson_dampening(N_max)
 
   # calculate the Chebyshev vectors
-  t = Chebyshev_vectors(A, H_scaled, ψ, N_min)
+  t = Chebyshev_vectors(A, H_scaled, ψ, Int(ceil(N_max/2.)))
+  print("length of t = $(length(t))\n")
 
   # calculate the Chebyshev moments
-  μ = Chebyshev_moments(ψ, A, t)
+  μ = Chebyshev_moments(ψ, A, t, i)
 
   # calculate the Chebyshev expansion of the scaled ω
   χ = zeros(length(ω))
-
-  # build vector for convergence check
-  χ_next = zeros(length(ω))
   
   # calculate the Chebyshev expansion of the scaled ω
-  T = Chebyshev_expansion(ω_, N_min)
+  T = Chebyshev_expansion(ω_, N_max)
 
   # calculate the χ for the initial N_min
   prefactor = 1 ./(a * π * sqrt.(1 .- ω_.^2))
-  sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min]), dims=2)
+  sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_max]), dims=2)
   χ = prefactor .* (g[1] * μ[1] .+ 2 .* sumval)
 
-  while true 
-    start_time = DateTime(now())
-
-    N_min += 1
-    # calculate the Jackson dampening factors for the new N_min
-    g = Jackson_dampening(N_min)
-
-    # calculate the Chebyshev vectors for the new N_min
-    # It's done this way to make use of cutoff, so that the bond dimensions don't explode
-    t_next = 2*apply(H_scaled, t[end]; cutoff=cutoff)
-    t_next = add(t_next, -t[end-1]; cutoff=cutoff)
-
-    push!(t, t_next)
-    push!(μ, inner(ψ', A, t[end]))
-
-    # calculate the Chebyshev expansion of the scaled ω for the new N_min
-    T = hcat(T, 2*ω_.*T[:, end] .- T[:, end-1])
-
-    # calculate the χ for the new N_min
-    sumval = sum(reduce(hcat, [g[n].*μ[n].*T[:, n] for n in 2:N_min]), dims=2)
-    χ_next = prefactor .* (g[1] .* μ[1] .+ 2 .* sumval)
-
-    # calculate error and the integral of χ
-    error = maximum(abs.(χ_next .- χ))
-    χ = χ_next
-    sum_χ = (0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1])) * Δω
-
-    end_time = DateTime(now())
-    Δt = end_time - start_time
-
-    # output for error convergence and time measurement
-    println("N = $N_min\t i = $i\t Error = $error\t sum_χ = $sum_χ\t Δsum = $(abs(sum_χ - sum_old))\t Δt = $Δt")
-
-    # stopping criterion on N, best if all sites have same number of chebyshev expansion terms
-    if N_min > N_max || error > 1 
-
-      if N_min > N_max
-        println("N > N_max")
-      end
-      if error > 1
-        @error "Error > 1"
-        exit(1)
-      end
-      break
-    end
-    sum_old = sum_χ
-  end
-      
+  # calculate error and the integral of χ
+  integral_χ = (0.5 * (χ[1] + χ[end]) + sum(χ[2:end-1])) * Δω
+  println("N = $N_max\t i = $i\t sum_χ = $integral_χ")
   return χ
 end
 
@@ -362,8 +326,8 @@ println("N_max = $N_max")
 println("cutoff = $cutoff")
 println("J = $J_mean")
 
-len_ω = 500 * max(1, Int(round(J_mean)))
-ω = collect(range(0.0001, stop=2*J_mean, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+len_ω = 500 * max(1, Int(round(abs(J_mean))))
+ω = collect(range(0.0001, stop=2*abs(J_mean), length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
 
 # print the number of threads
@@ -376,6 +340,10 @@ end
 
 # write the results to a file for the plot
 println(χ)
+
+# write χ to a seperate out file
+f = open("parent_calc_folder/chi_data.txt", "w")
+write(f, string(χ), "\n")
 
 min_val = minimum(χ)
 χ = χ .- min_val
