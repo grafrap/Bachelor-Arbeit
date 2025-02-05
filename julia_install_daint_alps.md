@@ -10,9 +10,12 @@ uenv image pull julia
 uenv start --view julia,modules julia
 ```
 ```shell
-juliaup init
+juliaup add 1.10
 ```
 (let everything download)
+```shell
+juliaup default 1.10
+```
 ```shell
 module load cray-mpich hdf5
 ```
