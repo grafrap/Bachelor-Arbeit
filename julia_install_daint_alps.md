@@ -7,9 +7,11 @@ uenv image pull julia
 ```
 (or specific version)
 ```shell
-uenv start --view julia,modules julia
+uenv start --view=modules julia
 ```
 ```shell
+export JULIA_DEPOT_PATH="$SCRATCH/daint/juliaup/depot"
+export PATH="$SCRATCH/daint/juliaup/bin:$PATH"
 juliaup add 1.10
 ```
 (let everything download)
