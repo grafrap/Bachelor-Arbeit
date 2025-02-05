@@ -119,6 +119,7 @@ cd aiida-dmrg
 pip install --user -e .
 verdi plugin list aiida.calculations
 verdi computer setup --config daint-julia.yaml
+verdi -p default computer configure core.ssh daint-julia
 verdi code setup --config dmrg-daint-alps.yaml
 verdi code setup --config dyncorr-daint-alps.yaml
 ```
