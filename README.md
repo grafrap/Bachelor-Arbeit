@@ -60,6 +60,7 @@ DMRG_template_pll_Energyextrema.jl < dmrg.inp \
 `n` [Int]: Number of MPI-processes, usually something between 1 and 8 is optimal, depending on the system and its size.\
 `s` [Int] or [Int/2]: spin quantum number of every spin in the chain.\
 `N` [Int]: length of the spin chain.\
+`cutoff` [Float64]: Defines the cutoff value for the addition function of MPSs and the dmrg calculation. The bigger the value, the faster but the more inaccurate the calculation is. A reasonable range of cutoff values is between 1e-8 and 1e-6.\
 `J` [Float64] or [Matrix{Float64}] of size N x N: Value / matrix containing all the J values for the Heisenberg term of the Hamiltonian.\
 `Sz` [Int] or [Int/2]: quantum number defining the sum of the local $S_z$ quantum number over the whole chain. This parameter is only important if `conserve_symmetry` is set to true, else `Sz` gets automatically set to nothing. It is therefore also only necessary if you want to conserve symmetry in your system.\
 `nexc` [Int]: Defines the number of excited states which are calculated. If you only want the ground state to be calculated, set it to 0.\
@@ -92,14 +93,14 @@ julia -t <t> --project=/path-to-env Dynam_Corr.jl < dyncorr.inp \
 ```
 #### Arguments
 `t` [Int]: Specifies the number of threads for the script. Here more than the number of sites is not necessary nor practical.\
-`J` [Float64] or [Matrix{Float64}] of size N x N: Value / matrix containing all the J values for the Heisenberg term of the Hamiltonian. This term should be the same as for the preceding DMRG calculation. It defines the energy range for the $\omega$-vaules of the Dynamical Correlator. Per default the energy range is set to 2 * J if J is a Float64 and 2 * J_mean if J is a matrix, where J_mean is the mean of all nonzero values in the J-matrix. This value is only needed for defining the energy range, hence, if other energy ranges are needed in the calculations, this value can be adjusted.\
+`E_range` [Float64]: Defines the energy range for the $\omega$-values of the Dynamical Correlator calculation. This range is often set to 2 * J, where J is the value from the DMRG calculation.\  
+`num_points` [Int]: Defines the number of $\omega$ values by which the `E_range` should be divided.\
 `N` [Int]: [Int]: Specifies the number of Chebyshev expansion coefficients. If no N is specified, the default value of max(W, 600) is taken, where W is the effective bandwidth of the Hamiltonian, i.e. the difference between the minimal and maximal energy.\
-`cutoff` [Float64]: Defines the cutoff value for the addition function of MPSs. The bigger the value, the faster but the more inaccurate the calculation is. This value is by default set to 1e-8. A reasonable range of cutoff values is between 1e-8 and 1e-6.
 
-From the arguments `N` and `cutoff` none, one or both can be provided. The order of these two does not matter.
+The argument `N` does not have to be provided and will be calculated by an empirical relationship if it is not provided.
 
 #### Outputs
-This script outputs the dynamical correlator for ω values between 0 and 2 J_mean (or the given J value) for all sites of the spinchain. Additionally, it already creates a normalized plot of the values.
+This script outputs the dynamical correlator for ω values between 0 and E_range for all sites of the spinchain. Additionally, it already creates a normalized plot of the values.
 
 #### Example
 ```shell
