@@ -103,7 +103,7 @@ function parse_arguments()
     end
   end
 
-  if length(input_args) != 7 && length(input_args) != 8
+  if length(input_args) != 9 && length(input_args) != 8
     println("Usage: julia DMRG_template_pll_Energyextrema.jl <s> <N> <J> <Sz> <nexc> <conserve_symmetry> <print_HDF5> <maximal_energy>")
     MPI.Abort(MPI.COMM_WORLD, 1)
   end
@@ -111,7 +111,8 @@ function parse_arguments()
   # Parse arguments
   s = parse(Float64, input_args[1])
   N = parse(Int, input_args[2])
-  J_input = input_args[3]
+  cutoff = parse(Float64, input_args[3])
+  J_input = input_args[4]
   
   # Initialize J as Union{Float64, Matrix{Float64}}
   J = nothing
@@ -148,18 +149,18 @@ function parse_arguments()
   end
 
   # Parse the remaining arguments
-  if length(input_args) == 7
+  if length(input_args) == 8
     Sz = nothing
-    nexc = parse(Int, input_args[4])
-    conserve_symmetry = parse(Bool, input_args[5])
-    print_HDF5 = parse(Bool, input_args[6])
-    maximal_energy = parse(Bool, input_args[7])
-  else
-    Sz = parse(Float64, input_args[4])
     nexc = parse(Int, input_args[5])
     conserve_symmetry = parse(Bool, input_args[6])
     print_HDF5 = parse(Bool, input_args[7])
     maximal_energy = parse(Bool, input_args[8])
+  else
+    Sz = parse(Float64, input_args[5])
+    nexc = parse(Int, input_args[6])
+    conserve_symmetry = parse(Bool, input_args[7])
+    print_HDF5 = parse(Bool, input_args[8])
+    maximal_energy = parse(Bool, input_args[9])
   end
 
   # Check if nothing in Sz is valid
@@ -173,7 +174,7 @@ function parse_arguments()
     Sz = nothing
   end
 
-  return (s, N, J, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy)
+  return (s, N, cutoff, J, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy)
 end
 
 # functions #
@@ -271,9 +272,9 @@ function main()
   # Get setup, only rank 0 will do this
   if rank == 0
 
-    s, N, J_input, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
+    s, N, cutoff, J_input, Sz, nexc, conserve_symmetry, print_HDF5, maximal_energy = parse_arguments()
     println("Parameters:")
-    println("s = $s, N = $N, J = $J_input, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
+    println("s = $s, N = $N, cutoff = $cutoff, J = $J_input, Sz = $Sz, nexc = $nexc, conserve_symmetry = $conserve_symmetry, print_HDF5 = $print_HDF5, maximal_energy = $maximal_energy")
 
     # Determine if J is scalar or matrix
     if typeof(J_input) == Float64
@@ -353,6 +354,7 @@ function main()
     Nsites = nothing
     print_HDF5 = nothing
     maximal_energy = nothing
+    cutoff = nothing
   end
 
   # Broadcast the variables from rank 0 to all processes
@@ -367,6 +369,7 @@ function main()
   Nsites = ITensorParallel.bcast(Nsites, 0, MPI.COMM_WORLD)
   print_HDF5 = ITensorParallel.bcast(print_HDF5, 0, MPI.COMM_WORLD)
   maximal_energy = ITensorParallel.bcast(maximal_energy, 0, MPI.COMM_WORLD)
+  cutoff = ITensorParallel.bcast(cutoff, 0, MPI.COMM_WORLD)
 
   # DMRG precision parameters
   precE = 1E-6
@@ -380,7 +383,7 @@ function main()
   MPI.Barrier(MPI.COMM_WORLD)
 
   # ground state
-  E0, ψ0 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
+  E0, ψ0 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi, cutoff=cutoff)
 
   # save ground state
   En = [E0]
@@ -397,7 +400,7 @@ function main()
     MPI.Barrier(MPI.COMM_WORLD)
 
     # excited state calculation
-    E, ψ = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi, ψn=ψn, w=w)
+    E, ψ = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi, cutoff=cutoff, ψn=ψn, w=w)
     
     # save excited state
     push!(En, E)
@@ -414,7 +417,7 @@ function main()
     MPI.Barrier(MPI.COMM_WORLD)
 
     # highest energy state calculation
-    E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi)
+    E1, ψ1 = DMRGSweeps.DMRGmaxdim_convES2Szi(mpo_sum_term, ψi, precE, precS2, precSzi, S2, Szi, cutoff=cutoff)
 
     # save highest energy state
     push!(En, E1)
@@ -431,6 +434,7 @@ function main()
     time = Dates.canonicalize(Dates.CompoundPeriod(Dates.DateTime(now()) - Dates.DateTime(start_time)))
 
     # outputs
+    println("Cutoff = ", cutoff)
     println("List of E:")
     println(En)
     println()

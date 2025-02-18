@@ -151,134 +151,61 @@ function Dynamic_correlator(ψ::MPS, H::MPO, A::MPO, i::Int, I::MPO, E0::Float64
 end
 
 function parse_arguments(E0::Float64, E1::Float64)
+  #=
+    Parses the command-line arguments for the script
+  =#
+
   input_args = []
   if length(ARGS) == 0
     println("No command-line arguments provided. Reading in from stdin.")
     try 
       input_line = readline(stdin)
       input_line = split(input_line, ['"', '\''])
-      tokens = split(input_line[1])
+      input_args = split(input_line[1])
     catch e
       @error "Failed to read from stdin." exception=(e, catch_backtrace())
       exit(1)
     end
   else
-    tokens = ARGS
+    input_args = ARGS
   end
 
-  if length(tokens) < 1
-    println("Usage: julia Dynam_Corr.jl <J> [N_max] [cutoff]")
+  if length(input_args) < 2
+    println("Usage: julia Dynam_Corr.jl <E_range> <num_points> [N_max]") # TODO: get cutoff from DMRG output
     exit(1)
   end
 
-  i = 1
-  while i <= length(tokens)
-    token = tokens[i]
-    if startswith(token, "[[")
-      # Start collecting J matrix tokens
-      j_tokens = [token]
-      i += 1
-      while i <= length(tokens) && !endswith(tokens[i], "]]")
-        push!(j_tokens, tokens[i])
-        i += 1
-      end
-      if i <= length(tokens)
-        push!(j_tokens, tokens[i])  # Add the closing brackets
-        i += 1
-      else
-        @error "J matrix not properly closed with ']]'."
-        exit(1)
-      end
-      # Join all J tokens into one string
-      J_str = join(j_tokens, " ")
-      # Convert Python-like array to Julia-like array
-      J_str = strip(J_str, ['[', ']'])
-      J_str = replace(J_str, r"\],\s*\[" => "; ")
-      J_str = replace(J_str, "," => " ")
-      J_str = "[" * J_str * "]"
-      push!(input_args, J_str)      
 
-    elseif startswith(token, "[")
-      # Start collecting J matrix tokens
-      j_tokens = [token]
-      i += 1
-      while i <= length(tokens) && !endswith(tokens[i], "]")
-        push!(j_tokens, tokens[i])
-        i += 1
-      end
-      if i <= length(tokens)
-        push!(j_tokens, tokens[i])  # Add the closing bracket
-        i += 1
-      else
-        @error "J matrix not properly closed with ']'."
-        exit(1)
-      end
-      # Join all J tokens into one string
-      J_str = join(j_tokens, " ")
-      push!(input_args, J_str)
-    else
-      # Regular argument
-      push!(input_args, token)
-      i += 1
-    end
+  first_arg = input_args[1]
+  E_range = 0.0
+  try 
+    E_range = parse(Float64, first_arg)
+  catch e
+    @error "Failed to parse E_range as a Float64: $e"
+    exit(1)
   end
 
-  J_input = input_args[1]
-  
-  # Initialize J as Union{Float64, Matrix{Float64}}
-  J = nothing
+  num_points = 0
+  try 
+    num_points = parse(Int, input_args[2])
+  catch e
+    @error "Failed to parse num_points as an integer: $e"
+    exit(1)
+  end
 
-  # Check if J is a matrix and parse it
-  if startswith(J_input, "[") && endswith(J_input, "]")
-    # Parse J as a matrix
-    J_content = J_input[2:end-1]  # Remove surrounding brackets
-    rows = split(J_content, ";")
-    try
-      # Parse each row into a vector of Float64
-      J_matrix = [parse.(Float64, split(strip(row))) for row in rows]
-      # Ensure all rows have the same number of columns
-      row_lengths = [length(row) for row in J_matrix]
-      if length(unique(row_lengths)) != 1
-        @error "All rows in J matrix must have the same number of columns."
-        exit(1)
-      end
-      # Convert arrays of arrays to a 2D Matrix
-      J = reduce(vcat, J_matrix)
-      J = reshape(J, row_lengths[1], length(J_matrix))
+  if length(input_args) == 3
+    N_max = 0
+    try 
+      N_max = parse(Int, input_args[3])
     catch e
-      @error "Failed to parse J matrix: $e"
+      @error "Failed to parse N_max as an integer: $e"
       exit(1)
     end
   else
-    # Parse J as a scalar
-    try
-      J = parse(Float64, J_input)
-    catch e
-      @error "Failed to parse J as a Float64: $e"
-      exit(1)
-    end
+    N_max = Int(round(abs(E0 + E1) > 600 ? abs(E0 + E1) : 600))
   end
 
-  N_max = Int(round(abs(E0 + E1) > 600 ? abs(E0 + E1) : 600))
-  cutoff = 1e-8
-  # Parse N_max or cutoff
-  if length(input_args) == 2
-    second_arg = input_args[2]
-    if tryparse(Int, second_arg) !== nothing
-      N_max = parse(Int, second_arg)
-    elseif tryparse(Float64, second_arg) !== nothing
-      cutoff = parse(Float64, second_arg)
-    else
-      @error "Second argument must be an integer (N_max) or a float (cutoff)."
-      exit(1)
-    end
-
-  elseif length(input_args) == 3
-    N_max = parse(Int, input_args[2])
-    cutoff = parse(Float64, input_args[3])
-  end
-
-  return J, N_max, cutoff
+  return E_range, num_points, N_max
 end
 
 
@@ -294,8 +221,10 @@ energy_line = findfirst(contains("List of E:"), lines) + 1
 energy_array = eval(Meta.parse(lines[energy_line]))
 E0 = energy_array[1]
 E1 = energy_array[end]
+cutoff_line = findfirst(contains("Cutoff"), lines)
+cutoff = parse(Float64, split(lines[cutoff_line])[end])
 
-J , N_max, cutoff = parse_arguments(E0, E1)
+E_range, len_ω, N_max = parse_arguments(E0, E1)
 f = h5open("parent_calc_folder/psin_data.h5", "r")
 ψ0 = read(f, "state_1/ψ", MPS)
 close(f)
@@ -313,21 +242,14 @@ sites = read(f, "sites", IndexSet)
 I = Operators.Identity_op(sites)
 Sz = [Operators.Szi_op(i, sites) for i in 1:N]
 close(f)
-
-J_mean = 0.0
-if typeof(J) == Matrix{Float64}
-  # assign the avg of the nonzero elements to J_mean
-  J_mean = sum(J) / length(J[J .!= 0])
-else
-  J_mean = J
-end
   
 println("N_max = $N_max")
 println("cutoff = $cutoff")
-println("J = $J_mean")
+println("Energy range = $E_range")
+println("Number of points = $len_ω")
 
-len_ω = 500 * max(1, Int(round(abs(J_mean))))
-ω = collect(range(0.0001, stop=2*abs(J_mean), length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
+# len_ω = 500 * max(1, Int(round(abs(J_mean))))
+ω = collect(range(0.00001, stop=E_range, length=len_ω)) # if beginning with 0, use [2:end] and add 1 to len_ω
 χ = zeros(length(Sz), length(ω))
 
 # print the number of threads
@@ -335,7 +257,7 @@ println("Number of threads: $(nthreads())")
 # main loop
 @threads for i in eachindex(Sz)
   println("Calculating χ for Sz($i)")
-  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, N_max)
+  χ[i, :] = Dynamic_correlator(ψ0, H, Sz[i], i, I, E0, E1, ω, N_max, cutoff=cutoff)
 end
 
 # write the results to a file for the plot
