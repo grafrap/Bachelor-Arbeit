@@ -17,4 +17,4 @@ export JULIA_DEPOT_PATH="/capstor/scratch/cscs/$USER/daint/juliaup/depot"
 export PATH="$SCRATCH/daint/juliaup/bin:$PATH"
 export JULIA_NUM_THREADS=$SLURM_CPUS_PER_TASK
 cp *.h5 parent_calc_folder/
-/users/$USER/Bachelor-Arbeit/src/Dynam_Corr.jl 0.4 200 1e-6 > parent_calc_folder/dyncorr.out 2> parent_calc_folder/dyncorr.err
+/users/$USER/Bachelor-Arbeit/src/Dynam_Corr.jl 1 1000 200 > parent_calc_folder/dyncorr.out 2> parent_calc_folder/dyncorr.err
